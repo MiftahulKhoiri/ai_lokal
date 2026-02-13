@@ -17,49 +17,12 @@
     <div class="chat-container" id="chat"></div>
 
     <div class="input-container">
-        <input type="text" id="message" placeholder="Ketik pesan..." onkeydown="handleKey(event)">
-        <button onclick="sendMessage()">Kirim</button>
+        <input type="text" id="message" placeholder="Ketik pesan...">
+        <button id="sendBtn">Kirim</button>
     </div>
 
 </div>
 
-<script>
-function handleKey(e){
-    if(e.key === "Enter"){
-        sendMessage();
-    }
-}
-
-function sendMessage() {
-    let input = document.getElementById("message");
-    let message = input.value.trim();
-    if (!message) return;
-
-    addMessage(message, "user");
-    input.value = "";
-
-    fetch("/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: message})
-    })
-    .then(res => res.json())
-    .then(data => {
-        addMessage(data.reply, "assistant");
-    });
-}
-
-function addMessage(text, sender) {
-    let chat = document.getElementById("chat");
-
-    let bubble = document.createElement("div");
-    bubble.className = "bubble " + sender;
-    bubble.innerText = text;
-
-    chat.appendChild(bubble);
-    chat.scrollTop = chat.scrollHeight;
-}
-</script>
-
+<script src="/static/app.js"></script>
 </body>
 </html>
