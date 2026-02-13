@@ -26,10 +26,10 @@ def start_server():
     global process
 
     if is_running():
-        print("✅ llama-server sudah berjalan.")
+        print(" llama-server sudah berjalan.")
         return
 
-    print("🚀 Menjalankan llama-server...")
+    print(" Menjalankan llama-server...")
 
     cmd = [
         LLAMA_PATH,
@@ -50,23 +50,23 @@ def start_server():
 
 
 def wait_until_ready(timeout=60):
-    print("⏳ Menunggu model load...")
+    print(" Menunggu model load...")
 
     start_time = time.time()
 
     while time.time() - start_time < timeout:
         if is_running():
-            print("✅ llama-server siap digunakan.")
+            print("llama-server siap digunakan.")
             return
         time.sleep(1)
 
-    raise RuntimeError("❌ llama-server gagal start.")
+    raise RuntimeError(" llama-server gagal start.")
 
 
 def stop_server():
     global process
 
     if process:
-        print("🛑 Menghentikan llama-server...")
+        print(" Menghentikan llama-server...")
         process.send_signal(signal.SIGINT)
         process.wait()
