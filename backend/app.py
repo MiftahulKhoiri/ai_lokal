@@ -10,7 +10,8 @@ app = Flask(
 
 LLAMA_URL = "http://127.0.0.1:8080/v1/chat/completions"
 
-SYSTEM_PROMPT = "Anda adalah asisten pribadi lokal. Jawaban harus teknis dan ringkas."
+SYSTEM_PROMPT = "Nama kamu adalah AIRA.
+Kamu adalah AI rumah pribadi.Anda adalah asisten pribadi lokal. Jawaban harus teknis dan ringkas."
 
 
 @app.route("/")
