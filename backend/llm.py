@@ -12,20 +12,15 @@ Jawaban harus jelas, teknis, ringkas, dan tidak bertele-tele.
 """
 
 # ====== SETTINGS ======
-MAX_HISTORY = 5          # batasi memory agar tidak melebihi context
+MAX_HISTORY = 5
 MAX_TOKENS = 256
 CTX_SIZE = 2048
 TEMPERATURE = 0.7
-TIMEOUT = 120            # detik
 
 
 def build_prompt(user_input, history):
-    """
-    Bangun prompt dengan batasan history agar context tidak overload.
-    """
     prompt = SYSTEM_PROMPT.strip() + "\n\n"
 
-    # Ambil history terakhir saja
     recent_history = history[-MAX_HISTORY:]
 
     for h in recent_history:
@@ -36,16 +31,19 @@ def build_prompt(user_input, history):
     return prompt
 
 
-def generate_response(user_input, history):
+def stream_response(user_input, history):
     """
-    Jalankan llama-cli dan kembalikan response model.
+    Streaming response generator.
+    Menghasilkan token realtime.
     """
 
     if not os.path.exists(MODEL_PATH):
-        return "ERROR: Model tidak ditemukan."
+        yield "ERROR: Model tidak ditemukan."
+        return
 
     if not os.path.exists(LLAMA_PATH):
-        return "ERROR: llama-cli tidak ditemukan."
+        yield "ERROR: llama-cli tidak ditemukan."
+        return
 
     prompt = build_prompt(user_input, history)
 
@@ -59,29 +57,27 @@ def generate_response(user_input, history):
         "--no-display-prompt"
     ]
 
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1
+    )
+
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=TIMEOUT
-        )
+        for line in process.stdout:
+            if line.strip():
+                yield line
 
-        if result.returncode != 0:
-            return f"ERROR: llama-cli gagal.\n{result.stderr}"
+        process.wait()
 
-        output = result.stdout.strip()
-
-        # Parsing lebih aman
-        if "Assistant:" in output:
-            response = output.split("Assistant:")[-1].strip()
-        else:
-            response = output.strip()
-
-        return response if response else "Tidak ada respons dari model."
-
-    except subprocess.TimeoutExpired:
-        return "ERROR: Model timeout (terlalu lama merespons)."
+        if process.returncode != 0:
+            yield "\nERROR: llama-cli gagal dijalankan."
 
     except Exception as e:
-        return f"ERROR: {str(e)}"
+        yield f"\nERROR: {str(e)}"
+
+    finally:
+        process.stdout.close()
+        process.stderr.close()
