@@ -7,7 +7,7 @@ BACKEND_DIR = os.path.join(BASE_DIR, "backend")
 
 sys.path.append(BACKEND_DIR)
 
-from backe import app
+from backend import app
 
 if __name__ == "__main__":
     print("🚀 AI Lokal Server Starting...")
