@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Lokal</title>
+    <title>AIRA - AI Rumah</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -11,13 +11,20 @@
 <div class="app">
 
     <div class="chat-header">
-        AI Lokal
+        <div class="header-left">
+            <span class="status-dot"></span>
+            <span class="title">AIRA</span>
+        </div>
+        <div class="header-right">
+            <button id="themeToggle">🌙</button>
+        </div>
     </div>
 
     <div class="chat-container" id="chat"></div>
 
     <div class="input-container">
-        <input type="text" id="message" placeholder="Ketik pesan...">
+        <textarea id="message" placeholder="Ketik pesan..." rows="1"></textarea>
+        <button id="stopBtn" class="stop-btn">Stop</button>
         <button id="sendBtn">Kirim</button>
     </div>
 
