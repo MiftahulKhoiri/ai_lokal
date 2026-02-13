@@ -18,6 +18,3 @@ def chat():
     add_to_memory(user_message, response)
 
     return jsonify({"reply": response})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
