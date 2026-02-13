@@ -1,11 +1,13 @@
 import os
 import sys
+from tools import bootstrap
 
 # Tambahkan folder backend ke PYTHONPATH
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.join(BASE_DIR, "backend")
 
 sys.path.append(BACKEND_DIR)
+bootstrap ()
 
 from backend import app
 
