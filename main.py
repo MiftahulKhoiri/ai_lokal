@@ -1,7 +1,6 @@
 import os
 import sys
 import socket
-import signal
 from tools.bootstrap import bootstrap
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +13,7 @@ bootstrap()
 
 from backend.app import app
 from backend.llama_manager import start_server, stop_server
+from backend.memory import load_memory
 
 
 def get_local_ip():
@@ -29,16 +29,22 @@ def get_local_ip():
 
 if __name__ == "__main__":
 
-    # 🔥 Start llama-server otomatis
+    # 🔹 Load persistent memory
+    print("[INFO] Loading memory...")
+    load_memory()
+
+    # 🔹 Start llama-server otomatis
+    print("[INFO] Starting llama-server...")
     start_server()
 
     local_ip = get_local_ip()
 
-    print("\n AI Lokal Server Starting...")
-    print(f"Local  : http://127.0.0.1:5000")
-    print(f" Network: http://{local_ip}:5000\n")
+    print("\n[INFO] AI Lokal Server Running")
+    print(f"Local   : http://127.0.0.1:5000")
+    print(f"Network : http://{local_ip}:5000\n")
 
     try:
         app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
     finally:
+        print("[INFO] Shutting down llama-server...")
         stop_server()
