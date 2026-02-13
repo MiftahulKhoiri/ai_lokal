@@ -1,24 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Lokal</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="chat-container" id="chat"></div>
+<div class="app">
 
-<div class="input-container">
-    <input type="text" id="message" placeholder="Ketik pesan...">
-    <button onclick="sendMessage()">Kirim</button>
+    <div class="chat-header">
+        AI Lokal
+    </div>
+
+    <div class="chat-container" id="chat"></div>
+
+    <div class="input-container">
+        <input type="text" id="message" placeholder="Ketik pesan..." onkeydown="handleKey(event)">
+        <button onclick="sendMessage()">Kirim</button>
+    </div>
+
 </div>
 
 <script>
+function handleKey(e){
+    if(e.key === "Enter"){
+        sendMessage();
+    }
+}
+
 function sendMessage() {
-    let message = document.getElementById("message").value;
+    let input = document.getElementById("message");
+    let message = input.value.trim();
     if (!message) return;
 
     addMessage(message, "user");
+    input.value = "";
 
     fetch("/chat", {
         method: "POST",
@@ -29,16 +47,16 @@ function sendMessage() {
     .then(data => {
         addMessage(data.reply, "assistant");
     });
-
-    document.getElementById("message").value = "";
 }
 
 function addMessage(text, sender) {
     let chat = document.getElementById("chat");
-    let div = document.createElement("div");
-    div.className = sender;
-    div.innerText = text;
-    chat.appendChild(div);
+
+    let bubble = document.createElement("div");
+    bubble.className = "bubble " + sender;
+    bubble.innerText = text;
+
+    chat.appendChild(bubble);
     chat.scrollTop = chat.scrollHeight;
 }
 </script>
