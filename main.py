@@ -34,9 +34,9 @@ if __name__ == "__main__":
 
     local_ip = get_local_ip()
 
-    print("\n🚀 AI Lokal Server Starting...")
-    print(f"📡 Local  : http://127.0.0.1:5000")
-    print(f"🌐 Network: http://{local_ip}:5000\n")
+    print("\n AI Lokal Server Starting...")
+    print(f"Local  : http://127.0.0.1:5000")
+    print(f" Network: http://{local_ip}:5000\n")
 
     try:
         app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
