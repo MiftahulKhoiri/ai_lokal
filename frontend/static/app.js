@@ -39,11 +39,13 @@ function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        assistantBubble.innerText = "";
+        assistantBubble.innerHTML = "";
 
         function read() {
             reader.read().then(({done, value}) => {
                 if (done) {
+                    addTimestamp(assistantBubble);
+                    addCopyButton(assistantBubble);
                     isStreaming = false;
                     input.disabled = false;
                     button.disabled = false;
@@ -51,7 +53,7 @@ function sendMessage() {
                     return;
                 }
 
-                assistantBubble.innerText += decoder.decode(value);
+                assistantBubble.innerHTML += parseMarkdown(decoder.decode(value));
                 scrollToBottom();
                 read();
             });
@@ -68,14 +70,50 @@ function sendMessage() {
 }
 
 function addMessage(text, sender) {
+
     let bubble = document.createElement("div");
     bubble.className = "bubble " + sender;
-    bubble.innerText = text;
+    bubble.innerHTML = parseMarkdown(text);
 
     chat.appendChild(bubble);
-    scrollToBottom();
+    addTimestamp(bubble);
+    addCopyButton(bubble);
 
+    scrollToBottom();
     return bubble;
+}
+
+function addTimestamp(bubble) {
+    let time = document.createElement("span");
+    time.className = "timestamp";
+
+    let now = new Date();
+    let formatted = now.getHours().toString().padStart(2, '0') + ":" +
+                    now.getMinutes().toString().padStart(2, '0');
+
+    time.innerText = formatted;
+    bubble.appendChild(time);
+}
+
+function addCopyButton(bubble) {
+    let btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.innerText = "⧉";
+
+    btn.onclick = function() {
+        navigator.clipboard.writeText(bubble.innerText);
+        btn.innerText = "✓";
+        setTimeout(() => btn.innerText = "⧉", 1000);
+    };
+
+    bubble.appendChild(btn);
+}
+
+function parseMarkdown(text) {
+    return text
+        .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+        .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+        .replace(/\*(.*?)\*/g, "<i>$1</i>");
 }
 
 function scrollToBottom(){
