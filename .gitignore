@@ -17,7 +17,7 @@ models/*.gguf
 models/*.bin
 models/*.pt
 models/*.safetensors
-
+data/
 # =========================
 # OS Files
 # =========================
