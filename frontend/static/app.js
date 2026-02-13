@@ -1,3 +1,5 @@
+document.addEventListener("DOMContentLoaded", function() {
+
 let controller = null;
 let isStreaming = false;
 
@@ -7,9 +9,18 @@ const stopBtn = document.getElementById("stopBtn");
 const chat = document.getElementById("chat");
 const themeToggle = document.getElementById("themeToggle");
 
-themeToggle.onclick = () => {
-    document.body.classList.toggle("dark");
-};
+if (!input || !button || !chat) {
+    console.error("Element tidak ditemukan");
+    return;
+}
+
+button.addEventListener("click", sendMessage);
+
+if (themeToggle) {
+    themeToggle.onclick = () => {
+        document.body.classList.toggle("dark");
+    };
+}
 
 input.addEventListener("input", () => {
     input.style.height = "auto";
@@ -23,10 +34,12 @@ input.addEventListener("keydown", e => {
     }
 });
 
-stopBtn.onclick = () => {
-    if (controller) controller.abort();
-    isStreaming = false;
-};
+if (stopBtn) {
+    stopBtn.onclick = () => {
+        if (controller) controller.abort();
+        isStreaming = false;
+    };
+}
 
 function sendMessage() {
 
@@ -102,3 +115,5 @@ function parseMarkdown(text) {
 function scrollToBottom() {
     chat.scrollTop = chat.scrollHeight;
 }
+
+});
