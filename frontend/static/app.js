@@ -1,20 +1,32 @@
+let controller = null;
 let isStreaming = false;
 
 const input = document.getElementById("message");
 const button = document.getElementById("sendBtn");
+const stopBtn = document.getElementById("stopBtn");
 const chat = document.getElementById("chat");
+const themeToggle = document.getElementById("themeToggle");
 
-input.addEventListener("keydown", function(e) {
-    if (e.key === "Enter" && !isStreaming) {
+themeToggle.onclick = () => {
+    document.body.classList.toggle("dark");
+};
+
+input.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = input.scrollHeight + "px";
+});
+
+input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey && !isStreaming) {
+        e.preventDefault();
         sendMessage();
     }
 });
 
-button.addEventListener("click", function() {
-    if (!isStreaming) {
-        sendMessage();
-    }
-});
+stopBtn.onclick = () => {
+    if (controller) controller.abort();
+    isStreaming = false;
+};
 
 function sendMessage() {
 
@@ -23,33 +35,28 @@ function sendMessage() {
 
     addMessage(message, "user");
     input.value = "";
+    input.style.height = "auto";
 
     isStreaming = true;
-    input.disabled = true;
-    button.disabled = true;
+    controller = new AbortController();
 
-    let assistantBubble = addMessage("Mengetik...", "assistant");
+    let assistantBubble = addMessage("", "assistant");
 
     fetch("/stream", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: message})
+        body: JSON.stringify({message: message}),
+        signal: controller.signal
     })
     .then(response => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        assistantBubble.innerHTML = "";
-
         function read() {
             reader.read().then(({done, value}) => {
                 if (done) {
                     addTimestamp(assistantBubble);
-                    addCopyButton(assistantBubble);
                     isStreaming = false;
-                    input.disabled = false;
-                    button.disabled = false;
-                    input.focus();
                     return;
                 }
 
@@ -58,64 +65,40 @@ function sendMessage() {
                 read();
             });
         }
-
         read();
     })
-    .catch(error => {
-        assistantBubble.innerText = "ERROR: Tidak dapat terhubung.";
+    .catch(() => {
+        assistantBubble.innerText = "[Dihentikan]";
         isStreaming = false;
-        input.disabled = false;
-        button.disabled = false;
     });
 }
 
 function addMessage(text, sender) {
-
     let bubble = document.createElement("div");
     bubble.className = "bubble " + sender;
     bubble.innerHTML = parseMarkdown(text);
-
     chat.appendChild(bubble);
-    addTimestamp(bubble);
-    addCopyButton(bubble);
-
     scrollToBottom();
     return bubble;
 }
 
 function addTimestamp(bubble) {
-    let time = document.createElement("span");
-    time.className = "timestamp";
-
+    let span = document.createElement("span");
+    span.className = "timestamp";
     let now = new Date();
-    let formatted = now.getHours().toString().padStart(2, '0') + ":" +
-                    now.getMinutes().toString().padStart(2, '0');
-
-    time.innerText = formatted;
-    bubble.appendChild(time);
-}
-
-function addCopyButton(bubble) {
-    let btn = document.createElement("button");
-    btn.className = "copy-btn";
-    btn.innerText = "⧉";
-
-    btn.onclick = function() {
-        navigator.clipboard.writeText(bubble.innerText);
-        btn.innerText = "✓";
-        setTimeout(() => btn.innerText = "⧉", 1000);
-    };
-
-    bubble.appendChild(btn);
+    span.innerText =
+        now.getHours().toString().padStart(2, '0') + ":" +
+        now.getMinutes().toString().padStart(2, '0');
+    bubble.appendChild(span);
 }
 
 function parseMarkdown(text) {
     return text
-        .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+        .replace(/```([\s\S]*?)```/g, "<pre>$1</pre>")
         .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
         .replace(/\*(.*?)\*/g, "<i>$1</i>");
 }
 
-function scrollToBottom(){
+function scrollToBottom() {
     chat.scrollTop = chat.scrollHeight;
 }
