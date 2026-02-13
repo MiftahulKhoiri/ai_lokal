@@ -16,16 +16,14 @@ body {
     height: 100vh;
 }
 
-/* Header */
 .chat-header {
     background: #075e54;
     color: white;
     padding: 15px;
-    font-weight: bold;
     text-align: center;
+    font-weight: bold;
 }
 
-/* Chat area */
 .chat-container {
     flex: 1;
     overflow-y: auto;
@@ -34,7 +32,6 @@ body {
     flex-direction: column;
 }
 
-/* Bubble */
 .bubble {
     max-width: 75%;
     padding: 10px;
@@ -44,19 +41,16 @@ body {
     font-size: 14px;
 }
 
-/* User bubble */
 .user {
     align-self: flex-end;
     background: #dcf8c6;
 }
 
-/* Assistant bubble */
 .assistant {
     align-self: flex-start;
     background: white;
 }
 
-/* Input area */
 .input-container {
     display: flex;
     padding: 8px;
@@ -80,4 +74,10 @@ body {
     background: #075e54;
     color: white;
     font-weight: bold;
+    cursor: pointer;
+}
+
+.input-container button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
