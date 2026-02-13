@@ -24,6 +24,7 @@ body {
     font-weight: bold;
 }
 
+/* Chat area */
 .chat-container {
     flex: 1;
     overflow-y: auto;
@@ -32,25 +33,87 @@ body {
     flex-direction: column;
 }
 
+/* Bubble */
 .bubble {
-    max-width: 75%;
-    padding: 10px;
+    display: inline-block;
+    max-width: 80%;
+    padding: 10px 14px;
     margin: 6px 0;
-    border-radius: 12px;
-    word-wrap: break-word;
+    border-radius: 16px;
     font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    position: relative;
+    animation: fadeIn 0.25s ease forwards;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .user {
     align-self: flex-end;
     background: #dcf8c6;
+    border-bottom-right-radius: 4px;
 }
 
 .assistant {
     align-self: flex-start;
     background: white;
+    border-bottom-left-radius: 4px;
 }
 
+/* Timestamp */
+.timestamp {
+    display: block;
+    font-size: 10px;
+    color: #555;
+    margin-top: 4px;
+    text-align: right;
+}
+
+/* Copy button */
+.copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 10px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+.copy-btn:hover {
+    opacity: 1;
+}
+
+/* Markdown code block */
+.bubble pre {
+    background: #1e1e1e;
+    color: #eee;
+    padding: 10px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12px;
+}
+
+.bubble code {
+    font-family: monospace;
+}
+
+/* Input area */
 .input-container {
     display: flex;
     padding: 8px;
