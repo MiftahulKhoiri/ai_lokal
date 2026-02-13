@@ -3,8 +3,8 @@ import sys
 import subprocess
 from pathlib import Path
 
-from core.logger import get_logger
-from core.update import SelfUpdater
+from tools.logger import get_logger
+from tools.update import SelfUpdater
 
 log = get_logger("AI_BOOTSTRAP")
 
@@ -12,9 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 VENV_DIR = BASE_DIR / "venv"
 REQ_FILE = BASE_DIR / "requirements.txt"
 
-DATA_PATH = BASE_DIR / "data" / "qa.json"
-CONTOH_PATH = BASE_DIR / "data" / "qa_contoh.json"
-MODEL_PATH = BASE_DIR / "model" / "vectorizer.pkl"
+MODEL_PATH = BASE_DIR / "model"
 
 
 # ===============================
@@ -83,60 +81,3 @@ def bootstrap():
     if updater.update_if_needed():
         log.warning("Restart setelah update...")
         restart_in_venv()
-
-    # ===============================
-    # 4. DATASET
-    # ===============================
-    if not DATA_PATH.exists():
-        log.warning("qa.json belum ada, generate dataset awal...")
-
-        if not CONTOH_PATH.exists():
-            raise RuntimeError("qa_contoh.json tidak ditemukan")
-
-        subprocess.check_call(
-            [
-                str(VENV_DIR / "bin" / "python"),
-                "-m",
-                "core.generate_dataset"   # ✅ pastikan file ini ADA
-            ],
-            cwd=str(BASE_DIR)
-        )
-
-        log.info("Dataset awal berhasil dibuat")
-
-    # ===============================
-    # 5. VALIDASI DATASET
-    # ===============================
-    try:
-        import json
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        if not isinstance(data, list) or not data:
-            raise RuntimeError("qa.json kosong atau format salah")
-
-        total_q = sum(len(item.get("questions", [])) for item in data)
-        if total_q == 0:
-            raise RuntimeError("qa.json tidak memiliki pertanyaan valid")
-
-    except Exception as e:
-        raise RuntimeError(f"Dataset tidak valid: {e}")
-
-    # ===============================
-    # 6. TRAINING MODEL
-    # ===============================
-    if not MODEL_PATH.exists():
-        log.warning("Model belum ada, training awal...")
-
-        subprocess.check_call(
-            [
-                str(VENV_DIR / "bin" / "python"),
-                "-m",
-                "core.trainer"
-            ],
-            cwd=str(BASE_DIR)
-        )
-
-        log.info("Training awal selesai")
-    else:
-        log.info("Model sudah ada, skip training awal")
