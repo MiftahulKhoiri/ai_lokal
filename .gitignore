@@ -2,13 +2,13 @@
 # Python
 # =========================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*.so
+*.egg-info/
 *.log
 .env
 venv/
-.env/
+.venv/
 
 # =========================
 # Model Files (JANGAN PUSH MODEL)
@@ -17,9 +17,26 @@ models/*.gguf
 models/*.bin
 models/*.pt
 models/*.safetensors
-# Data pribadi
+
+# =========================
+# Data Pribadi (AI Memory)
+# =========================
 data/*
 !data/.keep
+
+# =========================
+# Database (jika nanti pakai)
+# =========================
+*.sqlite3
+*.db
+
+# =========================
+# Temporary Files
+# =========================
+*.tmp
+*.bak
+*.swp
+
 # =========================
 # OS Files
 # =========================
@@ -31,3 +48,9 @@ Thumbs.db
 # =========================
 .vscode/
 .idea/
+
+# =========================
+# Build / Distribution
+# =========================
+dist/
+build/
