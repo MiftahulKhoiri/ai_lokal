@@ -6,7 +6,7 @@ Auto update source code dari GitHub
 import subprocess
 import os
 
-from rools.logger import get_logger
+from tools.logger import get_logger
 
 log = get_logger("AI_SELF_UPDATE")
 
