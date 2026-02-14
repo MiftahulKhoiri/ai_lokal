@@ -15,6 +15,7 @@ FLASK_PORT = 5000
 
 llama_process = None
 gunicorn_process = None
+bootstrap()
 
 
 # ===============================
