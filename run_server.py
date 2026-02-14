@@ -15,6 +15,7 @@ FLASK_PORT = 5000
 
 llama_process = None
 gunicorn_process = None
+
 bootstrap()
 
 
@@ -27,7 +28,6 @@ def kill_port(port):
 
 def wait_for_llama(timeout=60):
     print("[INFO] Menunggu llama-server siap...")
-
     start_time = time.time()
 
     while time.time() - start_time < timeout:
@@ -36,7 +36,7 @@ def wait_for_llama(timeout=60):
             if r.status_code == 200:
                 print("[INFO] llama-server siap.")
                 return True
-        except:
+        except Exception:
             pass
         time.sleep(1)
 
@@ -68,7 +68,7 @@ def start_llama():
 
 
 # ===============================
-# Start Gunicorn
+# Start Gunicorn (FIXED)
 # ===============================
 def start_gunicorn():
     global gunicorn_process
@@ -77,7 +77,8 @@ def start_gunicorn():
     kill_port(FLASK_PORT)
 
     cmd = [
-        "gunicorn",
+        sys.executable,              # python dari venv aktif
+        "-m", "gunicorn",            # jalankan sebagai module
         "-w", "2",
         "--worker-class", "gthread",
         "--threads", "4",
