@@ -4,6 +4,7 @@ import subprocess
 import signal
 import time
 import requests
+from tools.bootstrap import bootstrap
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "models", "qwen2.5-3b-instruct-q4_k_m.gguf")
