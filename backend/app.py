@@ -16,7 +16,40 @@ Kamu adalah AI rumah pribadi.
 Jawaban harus teknis, ringkas, dan tidak bertele-tele.
 """
 
-MAX_HISTORY = 10  # batasi memory untuk percepat inference
+MAX_HISTORY = 10
+SUMMARY_TRIGGER = 12
+SUMMARY_KEEP = 6
+SUMMARY_MAX_TOKENS = 200
+
+
+def summarize_history(history):
+    summary_prompt = [
+        {
+            "role": "system",
+            "content": "Ringkas percakapan berikut secara teknis dan padat. Simpan fakta penting, hapus basa-basi."
+        }
+    ] + history
+
+    payload = {
+        "model": "local-model",
+        "messages": summary_prompt,
+        "temperature": 0.3,
+        "max_tokens": SUMMARY_MAX_TOKENS,
+        "stream": False
+    }
+
+    try:
+        r = requests.post(LLAMA_URL, json=payload, timeout=120)
+        result = r.json()
+        summary_text = result["choices"][0]["message"]["content"]
+
+        return {
+            "role": "system",
+            "content": f"Ringkasan percakapan sebelumnya:\n{summary_text}"
+        }
+
+    except:
+        return None
 
 
 @app.route("/")
@@ -27,8 +60,22 @@ def index():
 @app.route("/stream", methods=["POST"])
 def stream():
     user_message = request.json.get("message", "")
+    history = get_memory()
 
-    history = get_memory()[-MAX_HISTORY:]  # trim memory
+    # ===== AUTO RINGKAS MEMORY =====
+    if len(history) > SUMMARY_TRIGGER:
+        old_part = history[:-SUMMARY_KEEP]
+        new_part = history[-SUMMARY_KEEP:]
+
+        summary = summarize_history(old_part)
+
+        if summary:
+            history = [summary] + new_part
+        else:
+            history = new_part
+
+    # Batasi history akhir
+    history = history[-MAX_HISTORY:]
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
@@ -39,8 +86,8 @@ def stream():
     payload = {
         "model": "local-model",
         "messages": messages,
-        "temperature": 0.5,     # lebih cepat & stabil
-        "max_tokens": 512,      # batasi output
+        "temperature": 0.5,
+        "max_tokens": 512,
         "stream": True
     }
 
@@ -96,3 +143,7 @@ def stream():
             "X-Accel-Buffering": "no"
         }
     )
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
