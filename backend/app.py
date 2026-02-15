@@ -24,7 +24,7 @@ def index():
 
 @app.route("/stream", methods=["POST"])
 def stream():
-    user_message = request.json["message"]
+    user_message = request.json.get("message", "")
 
     history = get_memory()
 
@@ -44,9 +44,18 @@ def stream():
     def generate():
         full_reply = ""
 
-        with requests.post(LLAMA_URL, json=payload, stream=True) as r:
-            for line in r.iter_lines():
-                if line:
+        try:
+            with requests.post(
+                LLAMA_URL,
+                json=payload,
+                stream=True,
+                timeout=300
+            ) as r:
+
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+
                     decoded = line.decode("utf-8")
 
                     if decoded.startswith("data: "):
@@ -63,9 +72,16 @@ def stream():
                             if content:
                                 full_reply += content
                                 yield content
-                        except:
+
+                        except (json.JSONDecodeError, KeyError):
                             continue
 
-        add_to_memory(user_message, full_reply)
+        finally:
+            if full_reply:
+                add_to_memory(user_message, full_reply)
 
-    return Response(generate(), mimetype="text/plain")
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache"}
+    )
