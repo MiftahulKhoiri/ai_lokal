@@ -16,25 +16,26 @@ Kamu adalah AI rumah pribadi.
 Jawaban harus teknis, ringkas, dan tidak bertele-tele.
 """
 
-MAX_HISTORY = 10
-SUMMARY_TRIGGER = 12
-SUMMARY_KEEP = 6
-SUMMARY_MAX_TOKENS = 200
+# ===== CONFIG =====
+STM_LIMIT = 8               # short-term memory limit
+LTM_MAX_TOKENS = 250        # panjang ringkasan long-term
+MAX_RESPONSE_TOKENS = 512
 
 
-def summarize_history(history):
+def summarize_to_long_term(old_messages):
+    """Ringkas pesan lama menjadi memori jangka panjang"""
     summary_prompt = [
         {
             "role": "system",
-            "content": "Ringkas percakapan berikut secara teknis dan padat. Simpan fakta penting, hapus basa-basi."
+            "content": "Ringkas percakapan berikut menjadi fakta teknis penting yang perlu diingat jangka panjang."
         }
-    ] + history
+    ] + old_messages
 
     payload = {
         "model": "local-model",
         "messages": summary_prompt,
         "temperature": 0.3,
-        "max_tokens": SUMMARY_MAX_TOKENS,
+        "max_tokens": LTM_MAX_TOKENS,
         "stream": False
     }
 
@@ -45,7 +46,7 @@ def summarize_history(history):
 
         return {
             "role": "system",
-            "content": f"Ringkasan percakapan sebelumnya:\n{summary_text}"
+            "content": f"Memori Jangka Panjang:\n{summary_text}"
         }
 
     except:
@@ -62,24 +63,31 @@ def stream():
     user_message = request.json.get("message", "")
     history = get_memory()
 
-    # ===== AUTO RINGKAS MEMORY =====
-    if len(history) > SUMMARY_TRIGGER:
-        old_part = history[:-SUMMARY_KEEP]
-        new_part = history[-SUMMARY_KEEP:]
+    # ===== PISAHKAN LTM & STM =====
+    long_term = []
+    short_term = []
 
-        summary = summarize_history(old_part)
-
-        if summary:
-            history = [summary] + new_part
+    for msg in history:
+        if "Memori Jangka Panjang:" in msg.get("content", ""):
+            long_term = [msg]  # hanya simpan 1 LTM aktif
         else:
-            history = new_part
+            short_term.append(msg)
 
-    # Batasi history akhir
-    history = history[-MAX_HISTORY:]
+    # ===== AUTO RINGKAS STM LAMA =====
+    if len(short_term) > STM_LIMIT:
+        old_part = short_term[:-STM_LIMIT]
+        short_term = short_term[-STM_LIMIT:]
+
+        summary = summarize_to_long_term(old_part)
+        if summary:
+            long_term = [summary]
+
+    # ===== GABUNG FINAL MEMORY =====
+    final_memory = long_term + short_term
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
-    ] + history + [
+    ] + final_memory + [
         {"role": "user", "content": user_message}
     ]
 
@@ -87,7 +95,7 @@ def stream():
         "model": "local-model",
         "messages": messages,
         "temperature": 0.5,
-        "max_tokens": 512,
+        "max_tokens": MAX_RESPONSE_TOKENS,
         "stream": True
     }
 
