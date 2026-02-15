@@ -17,6 +17,7 @@ Jawaban harus teknis, ringkas, dan tidak bertele-tele.
 """
 
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -26,7 +27,7 @@ def index():
 def stream():
     user_message = request.json.get("message", "")
 
-    history = get_memory()
+    history = get_memory()[-MAX_HISTORY:]  # trim memory
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
@@ -37,7 +38,8 @@ def stream():
     payload = {
         "model": "local-model",
         "messages": messages,
-        "temperature": 0.7,
+        "temperature": 0.5,     # lebih cepat & stabil
+        "max_tokens": 512,      # batasi output
         "stream": True
     }
 
@@ -49,7 +51,7 @@ def stream():
                 LLAMA_URL,
                 json=payload,
                 stream=True,
-                timeout=300
+                timeout=180
             ) as r:
 
                 for line in r.iter_lines():
@@ -58,30 +60,38 @@ def stream():
 
                     decoded = line.decode("utf-8")
 
-                    if decoded.startswith("data: "):
-                        data = decoded[6:]
+                    if not decoded.startswith("data: "):
+                        continue
 
-                        if data == "[DONE]":
-                            break
+                    data = decoded[6:]
 
-                        try:
-                            json_data = json.loads(data)
-                            delta = json_data["choices"][0]["delta"]
-                            content = delta.get("content", "")
+                    if data == "[DONE]":
+                        break
 
-                            if content:
-                                full_reply += content
-                                yield content
+                    try:
+                        json_data = json.loads(data)
+                        delta = json_data["choices"][0]["delta"]
+                        content = delta.get("content")
 
-                        except (json.JSONDecodeError, KeyError):
-                            continue
+                        if content:
+                            full_reply += content
+                            yield content
+
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+
+        except requests.exceptions.RequestException:
+            yield "⚠ Model tidak merespon."
 
         finally:
-            if full_reply:
+            if full_reply.strip():
                 add_to_memory(user_message, full_reply)
 
     return Response(
         generate(),
         mimetype="text/event-stream",
-        headers={"Cache-Control": "no-cache"}
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"
+        }
     )
