@@ -4,12 +4,20 @@ const chatContainer = document.getElementById("chat");
 const homeScreen = document.getElementById("homeScreen");
 
 sendBtn.addEventListener("click", sendMessage);
+
 messageInput.addEventListener("keypress", function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
     }
 });
+
+function scrollToBottom() {
+    chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: "smooth"
+    });
+}
 
 async function sendMessage() {
     const text = messageInput.value.trim();
@@ -21,8 +29,9 @@ async function sendMessage() {
     addMessage(text, "user");
     messageInput.value = "";
 
-    // buat bubble kosong untuk bot
     const botBubble = addMessage("", "bot");
+
+    sendBtn.disabled = true; // cegah spam klik
 
     try {
         const response = await fetch("/stream", {
@@ -33,6 +42,14 @@ async function sendMessage() {
             body: JSON.stringify({ message: text })
         });
 
+        if (!response.ok) {
+            throw new Error("Server error");
+        }
+
+        if (!response.body) {
+            throw new Error("ReadableStream not supported");
+        }
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
 
@@ -40,14 +57,18 @@ async function sendMessage() {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
+            const chunk = decoder.decode(value, { stream: true });
             botBubble.innerText += chunk;
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            scrollToBottom();
         }
 
     } catch (err) {
         botBubble.innerText = "Koneksi gagal ke server.";
         console.error(err);
+    } finally {
+        sendBtn.disabled = false;
+        scrollToBottom();
     }
 }
 
@@ -56,5 +77,7 @@ function addMessage(text, sender) {
     msg.classList.add("message", sender);
     msg.innerText = text;
     chatContainer.appendChild(msg);
+
+    scrollToBottom();
     return msg;
 }
