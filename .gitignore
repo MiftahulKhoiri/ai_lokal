@@ -19,9 +19,9 @@ models/*.pt
 models/*.safetensors
 
 # =========================
-# Data Pribadi (AI Memory)
+# Data Runtime / AI Memory
 # =========================
-data/chat_history.json
+data/
 
 # =========================
 # Database (jika nanti pakai)
