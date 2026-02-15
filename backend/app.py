@@ -16,6 +16,7 @@ Kamu adalah AI rumah pribadi.
 Jawaban harus teknis, ringkas, dan tidak bertele-tele.
 """
 
+MAX_HISTORY = 10  # batasi memory untuk percepat inference
 
 
 @app.route("/")
