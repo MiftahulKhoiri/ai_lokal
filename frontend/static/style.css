@@ -133,3 +133,17 @@ textarea {
     background: black;
     color: white;
 }
+
+.scroll-bottom-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 90px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: black;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+}
