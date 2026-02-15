@@ -4,32 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIRA - AI Rumah</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="app">
 
+    <!-- HEADER -->
     <div class="chat-header">
-        <div class="header-left">
-            <span class="status-dot"></span>
-            <span class="title">AIRA</span>
-        </div>
-        <div class="header-right">
-            <button id="themeToggle">🌙</button>
+        <button class="menu-btn">☰</button>
+        <div class="header-title">AIRA</div>
+        <div class="header-actions">
+            <button class="icon-btn">👤+</button>
+            <button class="icon-btn">💬</button>
         </div>
     </div>
 
+    <!-- HERO / HOME -->
+    <div class="home" id="homeScreen">
+        <h1>Apa yang bisa saya bantu?</h1>
+
+        <div class="action-grid">
+            <button class="action-btn">🖼️ Buat gambar</button>
+            <button class="action-btn">💡 Diskusikan</button>
+            <button class="action-btn">✍️ Bantu tuliskan</button>
+            <button class="action-btn">🎁 Kejutkan saya</button>
+        </div>
+    </div>
+
+    <!-- CHAT AREA -->
     <div class="chat-container" id="chat"></div>
 
+    <!-- INPUT -->
     <div class="input-container">
-        <textarea id="message" placeholder="Ketik pesan..." rows="1"></textarea>
-        <button id="stopBtn" class="stop-btn">Stop</button>
-        <button id="sendBtn">Kirim</button>
+        <button class="plus-btn">＋</button>
+        <textarea id="message" placeholder="Tanya AIRA..." rows="1"></textarea>
+        <button class="mic-btn">🎤</button>
+        <button id="sendBtn" class="voice-btn">⬤</button>
     </div>
 
 </div>
 
-<script src="/static/app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
