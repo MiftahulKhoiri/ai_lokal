@@ -21,8 +21,7 @@ models/*.safetensors
 # =========================
 # Data Pribadi (AI Memory)
 # =========================
-data/*
-!data/.keep
+data/chat_history.json
 
 # =========================
 # Database (jika nanti pakai)
