@@ -3,48 +3,43 @@ const messageInput = document.getElementById("message");
 const chatContainer = document.getElementById("chat");
 const homeScreen = document.getElementById("homeScreen");
 
-// Buat tombol scroll ke bawah
-const scrollBtn = document.createElement("button");
-scrollBtn.innerText = "⬇";
-scrollBtn.className = "scroll-bottom-btn";
-scrollBtn.style.display = "none";
-document.body.appendChild(scrollBtn);
-
 let controller = null;
+let isStreaming = false;
 
-sendBtn.addEventListener("click", sendMessage);
-
-messageInput.addEventListener("keypress", function (e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
-
-// AUTO RESIZE TEXTAREA
+// ===== AUTO RESIZE =====
 messageInput.addEventListener("input", () => {
     messageInput.style.height = "auto";
     messageInput.style.height = messageInput.scrollHeight + "px";
 });
 
-// SCROLL DETECTION
-chatContainer.addEventListener("scroll", () => {
+// ===== SEND BUTTON =====
+sendBtn.addEventListener("click", () => {
+    if (isStreaming && controller) {
+        controller.abort();
+        return;
+    }
+    sendMessage();
+});
+
+// ===== ENTER =====
+messageInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
+    }
+});
+
+function scrollToBottom(force = false) {
     const nearBottom =
         chatContainer.scrollHeight - chatContainer.scrollTop <=
-        chatContainer.clientHeight + 50;
+        chatContainer.clientHeight + 80;
 
-    scrollBtn.style.display = nearBottom ? "none" : "block";
-});
-
-scrollBtn.addEventListener("click", () => {
-    scrollToBottom(true);
-});
-
-function scrollToBottom(smooth = false) {
-    chatContainer.scrollTo({
-        top: chatContainer.scrollHeight,
-        behavior: smooth ? "smooth" : "auto"
-    });
+    if (nearBottom || force) {
+        chatContainer.scrollTo({
+            top: chatContainer.scrollHeight,
+            behavior: "smooth"
+        });
+    }
 }
 
 async function sendMessage() {
@@ -59,26 +54,41 @@ async function sendMessage() {
     messageInput.style.height = "auto";
 
     const botBubble = addMessage("", "bot");
-    const typingIndicator = document.createElement("span");
-    typingIndicator.innerText = "...";
-    botBubble.appendChild(typingIndicator);
+
+    // typing animation
+    botBubble.innerHTML = `<span class="typing">
+        <span></span><span></span><span></span>
+    </span>`;
 
     controller = new AbortController();
-
+    isStreaming = true;
     sendBtn.innerText = "STOP";
 
     try {
         const response = await fetch("/stream", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: text }),
             signal: controller.signal
         });
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
+
+        let buffer = "";
+        let renderScheduled = false;
+
+        function scheduleRender() {
+            if (!renderScheduled) {
+                renderScheduled = true;
+                setTimeout(() => {
+                    botBubble.innerText += buffer;
+                    buffer = "";
+                    renderScheduled = false;
+                    scrollToBottom();
+                }, 25); // smooth 25ms batching
+            }
+        }
 
         botBubble.innerText = "";
 
@@ -87,9 +97,8 @@ async function sendMessage() {
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            botBubble.innerText += chunk;
-
-            scrollToBottom();
+            buffer += chunk;
+            scheduleRender();
         }
 
     } catch (err) {
@@ -97,25 +106,18 @@ async function sendMessage() {
             botBubble.innerText = "Koneksi gagal.";
         }
     } finally {
+        isStreaming = false;
         sendBtn.innerText = "⬤";
         controller = null;
-        scrollToBottom();
+        scrollToBottom(true);
     }
 }
-
-// STOP STREAMING
-sendBtn.addEventListener("dblclick", () => {
-    if (controller) {
-        controller.abort();
-        sendBtn.innerText = "⬤";
-    }
-});
 
 function addMessage(text, sender) {
     const msg = document.createElement("div");
     msg.classList.add("message", sender);
     msg.innerText = text;
     chatContainer.appendChild(msg);
-    scrollToBottom();
+    scrollToBottom(true);
     return msg;
 }
