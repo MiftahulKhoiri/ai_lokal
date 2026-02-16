@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIRA - AI Rumah</title>
 
+    <!-- Flask static CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -14,13 +15,18 @@
     <!-- HEADER -->
     <div class="chat-header">
         <button class="menu-btn">☰</button>
-        <div class="header-title">AIRA</div>
+
+        <div class="header-title">
+            AIRA
+        </div>
 
         <!-- MODEL SELECT -->
-        <select id="modelSelect" class="model-select">
-            <option value="3b">Qwen 3B (Cepat)</option>
-            <option value="7b">Qwen 7B (Akurat)</option>
-        </select>
+        <div class="model-wrapper">
+            <select id="modelSelect" class="model-select">
+                <option value="3b">Qwen 3B (Cepat)</option>
+                <option value="7b">Qwen 7B (Akurat)</option>
+            </select>
+        </div>
 
         <div class="header-actions">
             <button class="icon-btn">👤+</button>
@@ -28,7 +34,7 @@
         </div>
     </div>
 
-    <!-- HERO -->
+    <!-- HERO / HOME -->
     <div class="home" id="homeScreen">
         <h1>Apa yang bisa saya bantu?</h1>
 
@@ -40,91 +46,28 @@
         </div>
     </div>
 
-    <!-- CHAT -->
+    <!-- CHAT AREA -->
     <div class="chat-container" id="chat"></div>
 
-    <!-- INPUT -->
+    <!-- INPUT AREA -->
     <div class="input-container">
         <button class="plus-btn">＋</button>
-        <textarea id="message" placeholder="Tanya AIRA..." rows="1"></textarea>
+
+        <textarea 
+            id="message" 
+            placeholder="Tanya AIRA..." 
+            rows="1"
+            autocomplete="off"
+        ></textarea>
+
         <button class="mic-btn">🎤</button>
         <button id="sendBtn" class="voice-btn">⬤</button>
     </div>
 
 </div>
 
-<script>
-
-const sendBtn = document.getElementById("sendBtn");
-const messageInput = document.getElementById("message");
-const chatContainer = document.getElementById("chat");
-const homeScreen = document.getElementById("homeScreen");
-const modelSelect = document.getElementById("modelSelect");
-
-sendBtn.addEventListener("click", sendMessage);
-messageInput.addEventListener("keypress", function(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
-
-function appendMessage(content, role) {
-    const div = document.createElement("div");
-    div.className = "chat-message " + role;
-    div.innerText = content;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function sendMessage() {
-
-    const message = messageInput.value.trim();
-    if (!message) return;
-
-    homeScreen.style.display = "none";
-
-    appendMessage(message, "user");
-    messageInput.value = "";
-
-    const botMessageDiv = document.createElement("div");
-    botMessageDiv.className = "chat-message bot";
-    chatContainer.appendChild(botMessageDiv);
-
-    const selectedModel = modelSelect.value;
-
-    fetch("/stream", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            message: message,
-            model: selectedModel
-        })
-    })
-    .then(response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        function read() {
-            reader.read().then(({ done, value }) => {
-                if (done) return;
-
-                const chunk = decoder.decode(value);
-                botMessageDiv.innerText += chunk;
-
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                read();
-            });
-        }
-
-        read();
-    })
-    .catch(err => {
-        botMessageDiv.innerText = "⚠ Error koneksi ke server.";
-    });
-}
-
-</script>
+<!-- Flask static JS -->
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 
 </body>
 </html>
