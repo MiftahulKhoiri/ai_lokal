@@ -2,6 +2,7 @@ const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("message");
 const chatContainer = document.getElementById("chat");
 const homeScreen = document.getElementById("homeScreen");
+const modelSelect = document.getElementById("modelSelect");
 
 let controller = null;
 let isStreaming = false;
@@ -46,6 +47,8 @@ async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
 
+    const selectedModel = modelSelect ? modelSelect.value : "3b";
+
     homeScreen.style.display = "none";
     chatContainer.style.display = "block";
 
@@ -68,9 +71,16 @@ async function sendMessage() {
         const response = await fetch("/stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text }),
+            body: JSON.stringify({
+                message: text,
+                model: selectedModel   // 🔥 MODEL DIKIRIM KE FLASK
+            }),
             signal: controller.signal
         });
+
+        if (!response.ok) {
+            throw new Error("Server error");
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
@@ -86,7 +96,7 @@ async function sendMessage() {
                     buffer = "";
                     renderScheduled = false;
                     scrollToBottom();
-                }, 25); // smooth 25ms batching
+                }, 25);
             }
         }
 
@@ -103,7 +113,7 @@ async function sendMessage() {
 
     } catch (err) {
         if (err.name !== "AbortError") {
-            botBubble.innerText = "Koneksi gagal.";
+            botBubble.innerText = "⚠ Koneksi ke model gagal.";
         }
     } finally {
         isStreaming = false;
