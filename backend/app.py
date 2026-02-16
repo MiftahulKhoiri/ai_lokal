@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, jsonify
 import requests
 import json
 import time
@@ -10,9 +10,7 @@ app = Flask(
     static_folder="../frontend/static"
 )
 
-# =========================
-# MODEL ENDPOINTS
-# =========================
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
 MODEL_ENDPOINTS = {
     "3b": "http://127.0.0.1:8080/v1/chat/completions",
@@ -24,15 +22,26 @@ AI rumah pribadi.
 Jawaban teknis, ringkas, langsung ke inti.
 """
 
-# ===== CONFIG =====
-STM_LIMIT = 4
 MAX_RESPONSE_TOKENS = 256
-REQUEST_TIMEOUT = 120
+REQUEST_TIMEOUT = (5, 120)
 
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/health")
+def health():
+    status = {}
+    for model, url in MODEL_ENDPOINTS.items():
+        try:
+            health_url = url.replace("/v1/chat/completions", "/health")
+            r = requests.get(health_url, timeout=2)
+            status[model] = r.status_code == 200
+        except:
+            status[model] = False
+    return jsonify(status)
 
 
 @app.route("/stream", methods=["POST"])
@@ -45,14 +54,12 @@ def stream():
     if model_choice not in MODEL_ENDPOINTS:
         return Response("Model tidak valid", status=400)
 
+    STM_LIMIT = 6 if model_choice == "7b" else 4
     LLAMA_URL = MODEL_ENDPOINTS[model_choice]
 
-    history = get_memory()
-
-    # ===== HARD TRIM STM =====
+    history = get_memory(model_choice)
     short_term = history[-STM_LIMIT:] if history else []
 
-    # ===== FINAL CONTEXT =====
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
     ] + short_term + [
@@ -69,9 +76,10 @@ def stream():
     def generate():
         full_reply = ""
 
-        try:
+        def stream_request(url):
+            nonlocal full_reply
             with requests.post(
-                LLAMA_URL,
+                url,
                 json=payload,
                 stream=True,
                 timeout=REQUEST_TIMEOUT
@@ -100,15 +108,27 @@ def stream():
                             full_reply += content
                             yield content
 
-                    except (json.JSONDecodeError, KeyError):
+                    except:
                         continue
 
+        try:
+            yield from stream_request(LLAMA_URL)
+
         except requests.exceptions.RequestException:
-            yield "⚠ Model timeout atau tidak merespon."
+
+            # AUTO FALLBACK 7B → 3B
+            if model_choice == "7b":
+                try:
+                    yield "\n\n⚠ 7B tidak merespon, fallback ke 3B...\n\n"
+                    yield from stream_request(MODEL_ENDPOINTS["3b"])
+                except:
+                    yield "⚠ Semua model gagal merespon."
+            else:
+                yield "⚠ Model tidak merespon."
 
         finally:
             if full_reply.strip():
-                add_to_memory(user_message, full_reply)
+                add_to_memory(user_message, full_reply, model_choice)
 
             print(
                 f"[MODEL: {model_choice.upper()}] Durasi:",
