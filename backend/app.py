@@ -2,7 +2,12 @@ from flask import Flask, render_template, request, Response, jsonify
 import requests
 import json
 import time
-from backend.memory import get_memory, add_to_memory
+
+from backend.memory import (
+    get_memory,
+    add_to_memory,
+    load_memory
+)
 
 app = Flask(
     __name__,
@@ -11,6 +16,9 @@ app = Flask(
 )
 
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+
+# Load memory saat server start
+load_memory()
 
 MODEL_ENDPOINTS = {
     "3b": "http://127.0.0.1:8080/v1/chat/completions",
@@ -48,8 +56,12 @@ def health():
 def stream():
     start_time = time.time()
 
-    user_message = request.json.get("message", "")
-    model_choice = request.json.get("model", "3b")
+    data = request.get_json(silent=True) or {}
+    user_message = data.get("message", "")
+    model_choice = data.get("model", "3b")
+
+    if not user_message.strip():
+        return Response("Pesan kosong", status=400)
 
     if model_choice not in MODEL_ENDPOINTS:
         return Response("Model tidak valid", status=400)
@@ -75,6 +87,7 @@ def stream():
 
     def generate():
         full_reply = ""
+        used_model = model_choice
 
         def stream_request(url):
             nonlocal full_reply
@@ -84,6 +97,8 @@ def stream():
                 stream=True,
                 timeout=REQUEST_TIMEOUT
             ) as r:
+
+                r.raise_for_status()
 
                 for line in r.iter_lines():
                     if not line:
@@ -119,6 +134,7 @@ def stream():
             # AUTO FALLBACK 7B → 3B
             if model_choice == "7b":
                 try:
+                    used_model = "3b"
                     yield "\n\n⚠ 7B tidak merespon, fallback ke 3B...\n\n"
                     yield from stream_request(MODEL_ENDPOINTS["3b"])
                 except:
@@ -128,10 +144,10 @@ def stream():
 
         finally:
             if full_reply.strip():
-                add_to_memory(user_message, full_reply, model_choice)
+                add_to_memory(user_message, full_reply, used_model)
 
             print(
-                f"[MODEL: {model_choice.upper()}] Durasi:",
+                f"[MODEL: {used_model.upper()}] Durasi:",
                 round(time.time() - start_time, 2),
                 "detik"
             )
