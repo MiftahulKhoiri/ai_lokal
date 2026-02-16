@@ -168,3 +168,33 @@ textarea {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
 }
+
+/* ===== MODEL SELECT ===== */
+
+.model-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.model-select {
+    background: #f1f1f1;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Responsive agar tidak penuh */
+.chat-header {
+    gap: 8px;
+}
+
+.header-title {
+    flex-shrink: 0;
+}
+
+.model-select:focus {
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
+}
