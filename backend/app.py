@@ -10,16 +10,23 @@ app = Flask(
     static_folder="../frontend/static"
 )
 
-LLAMA_URL = "http://127.0.0.1:8080/v1/chat/completions"
+# =========================
+# MODEL ENDPOINTS
+# =========================
+
+MODEL_ENDPOINTS = {
+    "3b": "http://127.0.0.1:8080/v1/chat/completions",
+    "7b": "http://127.0.0.1:8081/v1/chat/completions"
+}
 
 SYSTEM_PROMPT = """Nama kamu adalah AIRA.
 AI rumah pribadi.
 Jawaban teknis, ringkas, langsung ke inti.
 """
 
-# ===== OPTIMIZED CONFIG =====
-STM_LIMIT = 4               # lebih kecil = context lebih ringan
-MAX_RESPONSE_TOKENS = 256   # kurangi output token
+# ===== CONFIG =====
+STM_LIMIT = 4
+MAX_RESPONSE_TOKENS = 256
 REQUEST_TIMEOUT = 120
 
 
@@ -33,9 +40,16 @@ def stream():
     start_time = time.time()
 
     user_message = request.json.get("message", "")
+    model_choice = request.json.get("model", "3b")
+
+    if model_choice not in MODEL_ENDPOINTS:
+        return Response("Model tidak valid", status=400)
+
+    LLAMA_URL = MODEL_ENDPOINTS[model_choice]
+
     history = get_memory()
 
-    # ===== HARD TRIM STM (TANPA RINGKAS) =====
+    # ===== HARD TRIM STM =====
     short_term = history[-STM_LIMIT:] if history else []
 
     # ===== FINAL CONTEXT =====
@@ -46,9 +60,8 @@ def stream():
     ]
 
     payload = {
-        "model": "local-model",
         "messages": messages,
-        "temperature": 0.4,      # lebih rendah = lebih cepat stabil
+        "temperature": 0.4,
         "max_tokens": MAX_RESPONSE_TOKENS,
         "stream": True
     }
@@ -97,7 +110,11 @@ def stream():
             if full_reply.strip():
                 add_to_memory(user_message, full_reply)
 
-            print("Durasi respon:", round(time.time() - start_time, 2), "detik")
+            print(
+                f"[MODEL: {model_choice.upper()}] Durasi:",
+                round(time.time() - start_time, 2),
+                "detik"
+            )
 
     return Response(
         generate(),
@@ -107,4 +124,3 @@ def stream():
             "X-Accel-Buffering": "no"
         }
     )
-
