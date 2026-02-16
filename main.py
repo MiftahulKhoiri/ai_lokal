@@ -29,13 +29,14 @@ def get_local_ip():
 
 if __name__ == "__main__":
 
-    # 🔹 Load persistent memory
     print("[INFO] Loading memory...")
     load_memory()
 
-    # 🔹 Start llama-server otomatis
-    print("[INFO] Starting llama-server...")
-    start_server()
+    print("[INFO] Starting llama servers...")
+
+    # 🔥 START BOTH MODELS
+    start_server("3b")
+    start_server("7b")
 
     local_ip = get_local_ip()
 
@@ -45,6 +46,8 @@ if __name__ == "__main__":
 
     try:
         app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+
     finally:
-        print("[INFO] Shutting down llama-server...")
-        stop_server()
+        print("[INFO] Shutting down llama servers...")
+        stop_server("3b")
+        stop_server("7b")
