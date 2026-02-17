@@ -5,18 +5,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 DATA_PATH = os.path.join(DATA_DIR, "chat_history.json")
 
-MAX_HISTORY = 20  # limit per model
+MAX_HISTORY = 20  # jumlah message pair (user+assistant)
 
-# Struktur:
-# {
-#   "3b": [ ... ],
-#   "7b": [ ... ]
-# }
+# Struktur baru:
+# [
+#   {"role": "user", "content": "..."},
+#   {"role": "assistant", "content": "..."}
+# ]
 
-chat_history = {
-    "3b": [],
-    "7b": []
-}
+chat_history = []
 
 
 def ensure_data_dir():
@@ -30,58 +27,50 @@ def load_memory():
     ensure_data_dir()
 
     if not os.path.exists(DATA_PATH):
-        chat_history = {"3b": [], "7b": []}
+        chat_history = []
         return
 
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-            # Pastikan struktur valid
-            if isinstance(data, dict):
-                chat_history["3b"] = data.get("3b", [])
-                chat_history["7b"] = data.get("7b", [])
+            if isinstance(data, list):
+                chat_history = data[-(MAX_HISTORY * 2):]
             else:
-                chat_history = {"3b": [], "7b": []}
+                chat_history = []
 
-    except:
-        chat_history = {"3b": [], "7b": []}
+    except Exception:
+        chat_history = []
 
 
 def save_memory():
     ensure_data_dir()
 
     try:
-        trimmed = {
-            "3b": chat_history["3b"][-MAX_HISTORY:],
-            "7b": chat_history["7b"][-MAX_HISTORY:]
-        }
+        trimmed = chat_history[-(MAX_HISTORY * 2):]
 
         with open(DATA_PATH, "w", encoding="utf-8") as f:
             json.dump(trimmed, f, indent=2, ensure_ascii=False)
 
-    except:
+    except Exception:
         pass
 
 
-def add_to_memory(user, assistant, model):
+def add_to_memory(user_message, assistant_message):
     global chat_history
 
-    if model not in chat_history:
-        chat_history[model] = []
-
-    chat_history[model].append({
+    chat_history.append({
         "role": "user",
-        "content": user
+        "content": user_message
     })
 
-    chat_history[model].append({
+    chat_history.append({
         "role": "assistant",
-        "content": assistant
+        "content": assistant_message
     })
 
     save_memory()
 
 
-def get_memory(model):
-    return chat_history.get(model, [])[-MAX_HISTORY:]
+def get_memory():
+    return chat_history[-(MAX_HISTORY * 2):]
