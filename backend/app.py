@@ -20,10 +20,10 @@ from backend.agent import Agent
 # CONFIG
 # =============================
 
-MODEL_ENDPOINTS = {
-    "3b": os.getenv("MODEL_3B_URL", "http://127.0.0.1:8080/v1/chat/completions"),
-    "7b": os.getenv("MODEL_7B_URL", "http://127.0.0.1:8081/v1/chat/completions"),
-}
+MODEL_ENDPOINT = os.getenv(
+    "MODEL_URL",
+    "http://127.0.0.1:8081/v1/chat/completions"
+)
 
 SYSTEM_PROMPT = """Nama kamu adalah AIRA.
 AI Brain coding pribadi.
@@ -40,6 +40,7 @@ Jawaban teknis, ringkas, langsung ke inti.
 
 MAX_RESPONSE_TOKENS = 256
 REQUEST_TIMEOUT = (5, 120)
+STM_LIMIT = 6  # short-term memory limit
 
 # =============================
 # APP INIT
@@ -70,28 +71,6 @@ logger = logging.getLogger("AIRA")
 # =============================
 # UTILITIES
 # =============================
-
-def estimate_complexity(text: str) -> str:
-    score = 0
-    text_lower = text.lower()
-
-    if len(text) > 200:
-        score += 1
-
-    keywords = [
-        "analisa", "bandingkan", "optimasi",
-        "arsitektur", "debug", "kenapa",
-        "mendalam", "refactor"
-    ]
-
-    if any(k in text_lower for k in keywords):
-        score += 1
-
-    if "```" in text or "def " in text:
-        score += 1
-
-    return "7b" if score >= 2 else "3b"
-
 
 def build_payload(messages: list) -> Dict:
     return {
@@ -135,9 +114,8 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
                 continue
 
 
-def build_messages(user_message: str, model_choice: str):
-    STM_LIMIT = 6 if model_choice == "7b" else 4
-    history = get_memory(model_choice)
+def build_messages(user_message: str):
+    history = get_memory("7b")
     short_term = history[-STM_LIMIT:] if history else []
 
     return (
@@ -157,16 +135,12 @@ def index():
 
 @app.route("/health")
 def health():
-    status = {}
-    for model, url in MODEL_ENDPOINTS.items():
-        try:
-            health_url = url.replace("/v1/chat/completions", "/health")
-            r = requests.get(health_url, timeout=2)
-            status[model] = r.status_code == 200
-        except requests.RequestException:
-            status[model] = False
-
-    return jsonify(status)
+    try:
+        health_url = MODEL_ENDPOINT.replace("/v1/chat/completions", "/health")
+        r = requests.get(health_url, timeout=2)
+        return jsonify({"7b": r.status_code == 200})
+    except requests.RequestException:
+        return jsonify({"7b": False})
 
 
 @app.route("/stream", methods=["POST"])
@@ -176,7 +150,6 @@ def stream():
 
     data = request.get_json(silent=True) or {}
     user_message = data.get("message", "").strip()
-    manual_model = data.get("model")
 
     if not user_message:
         return Response("Pesan kosong", status=400)
@@ -186,7 +159,6 @@ def stream():
     # =========================
     agent_response = agent.handle(user_message)
 
-    # Jika agent return dict (contoh: analyze_file)
     if isinstance(agent_response, dict):
 
         if agent_response.get("action") == "analyze_file":
@@ -216,7 +188,7 @@ Isi file:
 
                 def generate_review():
                     for chunk in call_model_stream(
-                        MODEL_ENDPOINTS["7b"],
+                        MODEL_ENDPOINT,
                         payload
                     ):
                         yield chunk
@@ -233,7 +205,6 @@ Isi file:
             except Exception as e:
                 return Response(f"Gagal analisa file: {e}", status=500)
 
-    # Jika agent return string biasa
     if isinstance(agent_response, str):
         logger.info(f"[{request_id}] Agent executed")
         return Response(agent_response, mimetype="text/plain")
@@ -241,57 +212,35 @@ Isi file:
     # =========================
     # NORMAL LLM FLOW
     # =========================
-    if manual_model in MODEL_ENDPOINTS:
-        model_choice = manual_model
-    else:
-        model_choice = estimate_complexity(user_message)
 
-    logger.info(f"[{request_id}] Incoming | Model: {model_choice}")
+    logger.info(f"[{request_id}] Incoming | Model: 7b")
 
-    messages = build_messages(user_message, model_choice)
+    messages = build_messages(user_message)
     payload = build_payload(messages)
 
     def generate():
         full_reply = ""
-        used_model = model_choice
 
         try:
             for chunk in call_model_stream(
-                MODEL_ENDPOINTS[model_choice],
+                MODEL_ENDPOINT,
                 payload
             ):
                 full_reply += chunk
                 yield chunk
 
         except requests.RequestException as e:
-            logger.warning(f"[{request_id}] {model_choice} failed: {e}")
-
-            if model_choice == "7b":
-                try:
-                    used_model = "3b"
-                    yield "\n\n⚠ Fallback ke 3B...\n\n"
-
-                    for chunk in call_model_stream(
-                        MODEL_ENDPOINTS["3b"],
-                        payload
-                    ):
-                        full_reply += chunk
-                        yield chunk
-
-                except Exception as fallback_error:
-                    logger.error(f"[{request_id}] Fallback failed: {fallback_error}")
-                    yield "⚠ Semua model gagal."
-            else:
-                yield "⚠ Model tidak merespon."
+            logger.error(f"[{request_id}] Model error: {e}")
+            yield "⚠ Model tidak merespon."
 
         finally:
             duration = round(time.time() - start_time, 2)
 
             if full_reply.strip():
-                add_to_memory(user_message, full_reply, used_model)
+                add_to_memory(user_message, full_reply, "7b")
 
             logger.info(
-                f"[{request_id}] Done | Model: {used_model} | {duration}s"
+                f"[{request_id}] Done | Model: 7b | {duration}s"
             )
 
     return Response(
