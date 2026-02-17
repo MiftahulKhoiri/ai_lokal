@@ -6,13 +6,23 @@ const homeScreen = document.getElementById("homeScreen");
 let controller = null;
 let isStreaming = false;
 
-// ===== AUTO RESIZE =====
+// ================= AUTO RESIZE =================
 messageInput.addEventListener("input", () => {
     messageInput.style.height = "auto";
     messageInput.style.height = messageInput.scrollHeight + "px";
 });
 
-// ===== SEND BUTTON =====
+// ================= MOBILE KEYBOARD FIX =================
+function adjustForKeyboard() {
+    setTimeout(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        scrollToBottom(true);
+    }, 300);
+}
+
+messageInput.addEventListener("focus", adjustForKeyboard);
+
+// ================= SEND BUTTON =================
 sendBtn.addEventListener("click", () => {
     if (isStreaming && controller) {
         controller.abort();
@@ -21,7 +31,7 @@ sendBtn.addEventListener("click", () => {
     sendMessage();
 });
 
-// ===== ENTER =====
+// ================= ENTER =================
 messageInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -29,6 +39,7 @@ messageInput.addEventListener("keypress", (e) => {
     }
 });
 
+// ================= SCROLL =================
 function scrollToBottom(force = false) {
     const nearBottom =
         chatContainer.scrollHeight - chatContainer.scrollTop <=
@@ -42,6 +53,42 @@ function scrollToBottom(force = false) {
     }
 }
 
+// ================= MARKDOWN RENDER =================
+function renderMarkdown(text) {
+    // Escape HTML
+    text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Code block ```lang
+    text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `
+            <div class="code-block">
+                <button class="copy-btn">Copy</button>
+                <pre><code>${code.trim()}</code></pre>
+            </div>
+        `;
+    });
+
+    // Line breaks
+    text = text.replace(/\n/g, "<br>");
+
+    return text;
+}
+
+// ================= COPY HANDLER =================
+function attachCopyEvents(container) {
+    const buttons = container.querySelectorAll(".copy-btn");
+
+    buttons.forEach(btn => {
+        btn.onclick = () => {
+            const code = btn.parentElement.querySelector("code").innerText;
+            navigator.clipboard.writeText(code);
+            btn.innerText = "Copied!";
+            setTimeout(() => btn.innerText = "Copy", 1500);
+        };
+    });
+}
+
+// ================= SEND MESSAGE =================
 async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
@@ -55,10 +102,11 @@ async function sendMessage() {
 
     const botBubble = addMessage("", "bot");
 
-    // typing animation
-    botBubble.innerHTML = `<span class="typing">
-        <span></span><span></span><span></span>
-    </span>`;
+    botBubble.innerHTML = `
+        <span class="typing">
+            <span></span><span></span><span></span>
+        </span>
+    `;
 
     controller = new AbortController();
     isStreaming = true;
@@ -68,43 +116,29 @@ async function sendMessage() {
         const response = await fetch("/stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                message: text
-            }),
+            body: JSON.stringify({ message: text }),
             signal: controller.signal
         });
 
-        if (!response.ok) {
-            throw new Error("Server error");
-        }
+        if (!response.ok) throw new Error("Server error");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
 
-        let buffer = "";
-        let renderScheduled = false;
+        let fullText = "";
 
-        function scheduleRender() {
-            if (!renderScheduled) {
-                renderScheduled = true;
-                setTimeout(() => {
-                    botBubble.innerText += buffer;
-                    buffer = "";
-                    renderScheduled = false;
-                    scrollToBottom();
-                }, 25);
-            }
-        }
-
-        botBubble.innerText = "";
+        botBubble.innerHTML = "";
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-            scheduleRender();
+            fullText += chunk;
+
+            botBubble.innerHTML = renderMarkdown(fullText);
+            attachCopyEvents(botBubble);
+            scrollToBottom();
         }
 
     } catch (err) {
@@ -119,10 +153,18 @@ async function sendMessage() {
     }
 }
 
+// ================= ADD MESSAGE =================
 function addMessage(text, sender) {
     const msg = document.createElement("div");
     msg.classList.add("message", sender);
-    msg.innerText = text;
+
+    if (sender === "bot") {
+        msg.innerHTML = renderMarkdown(text);
+        attachCopyEvents(msg);
+    } else {
+        msg.innerText = text;
+    }
+
     chatContainer.appendChild(msg);
     scrollToBottom(true);
     return msg;
