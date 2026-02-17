@@ -196,3 +196,21 @@ textarea {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
 }
+
+.code-block {
+    position: relative;
+    margin-top: 8px;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 8px;
+    background: #007aff;
+    color: white;
+    cursor: pointer;
+}
