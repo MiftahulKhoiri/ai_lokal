@@ -17,13 +17,15 @@ body {
     flex-direction: column;
 }
 
-/* HEADER */
+/* ================= HEADER ================= */
+
 .chat-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
     background: #ffffff;
+    gap: 8px;
 }
 
 .menu-btn,
@@ -33,6 +35,7 @@ body {
     padding: 8px 12px;
     border-radius: 20px;
     font-size: 16px;
+    cursor: pointer;
 }
 
 .header-title {
@@ -41,9 +44,21 @@ body {
     background: #f1f1f1;
     padding: 6px 16px;
     border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* HOME */
+.model-badge {
+    font-size: 12px;
+    background: #007aff;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+/* ================= HOME ================= */
+
 .home {
     flex: 1;
     display: flex;
@@ -54,7 +69,7 @@ body {
 }
 
 .home h1 {
-    font-size: 24px;
+    font-size: 22px;
     margin-bottom: 30px;
 }
 
@@ -70,9 +85,11 @@ body {
     padding: 14px;
     border-radius: 20px;
     font-size: 14px;
+    cursor: pointer;
 }
 
-/* CHAT */
+/* ================= CHAT ================= */
+
 .chat-container {
     flex: 1;
     padding: 16px;
@@ -85,6 +102,9 @@ body {
     padding: 10px 14px;
     border-radius: 18px;
     max-width: 80%;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
 }
 
 .user {
@@ -97,7 +117,24 @@ body {
     background: #e5e5ea;
 }
 
-/* INPUT */
+/* ===== CODE BLOCK STYLE ===== */
+
+.bot pre {
+    background: #1e1e1e;
+    color: #eaeaea;
+    padding: 12px;
+    border-radius: 12px;
+    overflow-x: auto;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.bot code {
+    font-family: "Courier New", monospace;
+}
+
+/* ================= INPUT ================= */
+
 .input-container {
     display: flex;
     align-items: center;
@@ -123,30 +160,21 @@ textarea {
     border: none;
     background: none;
     font-size: 20px;
-}
-
-.voice-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    background: black;
-    color: white;
-}
-
-.scroll-bottom-btn {
-    position: fixed;
-    right: 20px;
-    bottom: 90px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    background: black;
-    color: white;
-    font-size: 18px;
     cursor: pointer;
 }
+
+.send-btn {
+    width: 48px;
+    height: 40px;
+    border-radius: 20px;
+    border: none;
+    background: black;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* ================= TYPING ================= */
 
 .typing {
     display: inline-flex;
@@ -167,34 +195,4 @@ textarea {
 @keyframes bounce {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
-}
-
-/* ===== MODEL SELECT ===== */
-
-.model-wrapper {
-    display: flex;
-    align-items: center;
-}
-
-.model-select {
-    background: #f1f1f1;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    outline: none;
-    cursor: pointer;
-}
-
-/* Responsive agar tidak penuh */
-.chat-header {
-    gap: 8px;
-}
-
-.header-title {
-    flex-shrink: 0;
-}
-
-.model-select:focus {
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
 }
