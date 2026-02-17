@@ -2,7 +2,6 @@ const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("message");
 const chatContainer = document.getElementById("chat");
 const homeScreen = document.getElementById("homeScreen");
-const modelSelect = document.getElementById("modelSelect");
 
 let controller = null;
 let isStreaming = false;
@@ -47,8 +46,6 @@ async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
 
-    const selectedModel = modelSelect ? modelSelect.value : "3b";
-
     homeScreen.style.display = "none";
     chatContainer.style.display = "block";
 
@@ -72,8 +69,7 @@ async function sendMessage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                message: text,
-                model: selectedModel   // 🔥 MODEL DIKIRIM KE FLASK
+                message: text
             }),
             signal: controller.signal
         });
