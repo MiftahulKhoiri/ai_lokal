@@ -14,6 +14,8 @@ from backend.memory import (
     load_memory
 )
 
+from backend.agent import Agent
+
 # =============================
 # CONFIG
 # =============================
@@ -30,7 +32,6 @@ Jawaban teknis, ringkas, langsung ke inti.
 
 MAX_RESPONSE_TOKENS = 256
 REQUEST_TIMEOUT = (5, 120)
-DEFAULT_MODEL = "3b"
 
 # =============================
 # APP INIT
@@ -45,6 +46,7 @@ app = Flask(
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
 load_memory()
+agent = Agent()
 
 # =============================
 # LOGGING
@@ -171,7 +173,18 @@ def stream():
     if not user_message:
         return Response("Pesan kosong", status=400)
 
-    # Smart routing
+    # =========================
+    # AGENT LAYER
+    # =========================
+    agent_response = agent.handle(user_message)
+
+    if agent_response:
+        logger.info(f"[{request_id}] Agent executed")
+        return Response(agent_response, mimetype="text/plain")
+
+    # =========================
+    # SMART ROUTING
+    # =========================
     if manual_model in MODEL_ENDPOINTS:
         model_choice = manual_model
     else:
@@ -187,24 +200,27 @@ def stream():
         used_model = model_choice
 
         try:
-            yield from call_model_stream(
+            for chunk in call_model_stream(
                 MODEL_ENDPOINTS[model_choice],
                 payload
-            )
+            ):
+                full_reply += chunk
+                yield chunk
 
         except requests.RequestException as e:
             logger.warning(f"[{request_id}] {model_choice} failed: {e}")
 
-            # fallback 7B → 3B
             if model_choice == "7b":
                 try:
                     used_model = "3b"
                     yield "\n\n⚠ Fallback ke 3B...\n\n"
 
-                    yield from call_model_stream(
+                    for chunk in call_model_stream(
                         MODEL_ENDPOINTS["3b"],
                         payload
-                    )
+                    ):
+                        full_reply += chunk
+                        yield chunk
 
                 except Exception as fallback_error:
                     logger.error(f"[{request_id}] Fallback failed: {fallback_error}")
