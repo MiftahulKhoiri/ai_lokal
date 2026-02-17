@@ -45,9 +45,23 @@ class Agent:
     # TOOLS
     # =========================
     def get_current_time(self) -> str:
-        now = datetime.now()
-        return (
-            f"Hari ini {now.strftime('%A')}, "
-            f"tanggal {now.strftime('%Y-%m-%d')}, "
-            f"jam {now.strftime('%H:%M:%S')}"
-        )
+    now = datetime.now()
+
+    hari_map = {
+        "Monday": "Senin",
+        "Tuesday": "Selasa",
+        "Wednesday": "Rabu",
+        "Thursday": "Kamis",
+        "Friday": "Jumat",
+        "Saturday": "Sabtu",
+        "Sunday": "Minggu",
+    }
+
+    hari_en = now.strftime("%A")
+    hari_id = hari_map.get(hari_en, hari_en)
+
+    return (
+        f"Hari ini {hari_id}, "
+        f"tanggal {now.strftime('%d-%m-%Y')}, "
+        f"jam {now.strftime('%H:%M:%S')}"
+    )
