@@ -9,52 +9,55 @@ MODEL_DIR = os.path.join(BASE_DIR, "models")
 
 LLAMA_PATH = "/home/pi5/llama.cpp/build/bin/llama-server"
 
-MODELS = {
-    "3b": {
-        "file": "qwen2.5-3b-instruct-q4_k_m.gguf",
-        "port": "8080"
-    },
-    "7b": {
-        "file": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
-        "port": "8081"
-    }
-}
+# =============================
+# SINGLE MODEL CONFIG (7B ONLY)
+# =============================
 
-processes = {}
+MODEL_FILE = "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+PORT = "8081"
+
+process = None
 
 
-def get_health_url(port):
-    return f"http://127.0.0.1:{port}/health"
+# =============================
+# UTILITIES
+# =============================
+
+def get_health_url():
+    return f"http://127.0.0.1:{PORT}/health"
 
 
-def is_running(port):
+def is_running():
     try:
-        r = requests.get(get_health_url(port), timeout=2)
+        r = requests.get(get_health_url(), timeout=2)
         return r.status_code == 200
-    except:
+    except requests.RequestException:
         return False
 
 
-def start_server(model_key):
-    if model_key not in MODELS:
-        print("Model tidak valid.")
+# =============================
+# SERVER CONTROL
+# =============================
+
+def start_server():
+    global process
+
+    model_path = os.path.join(MODEL_DIR, MODEL_FILE)
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model tidak ditemukan: {model_path}")
+
+    if is_running():
+        print(f"Model sudah berjalan di port {PORT}.")
         return
 
-    model_info = MODELS[model_key]
-    model_path = os.path.join(MODEL_DIR, model_info["file"])
-    port = model_info["port"]
-
-    if is_running(port):
-        print(f"Model {model_key} sudah berjalan di port {port}.")
-        return
-
-    print(f"Menjalankan model {model_key} di port {port}...")
+    print(f"Menjalankan 7B di port {PORT}...")
 
     cmd = [
         LLAMA_PATH,
         "-m", model_path,
         "--host", "127.0.0.1",
-        "--port", port,
+        "--port", PORT,
         "--ctx-size", "2048",
         "--threads", "8",
         "--batch-size", "512",
@@ -67,16 +70,15 @@ def start_server(model_key):
         stderr=subprocess.DEVNULL
     )
 
-    processes[model_key] = process
-    wait_until_ready(port)
+    wait_until_ready()
 
 
-def wait_until_ready(port, timeout=120):
+def wait_until_ready(timeout=120):
     print("Menunggu model load...")
     start_time = time.time()
 
     while time.time() - start_time < timeout:
-        if is_running(port):
+        if is_running():
             print("Model siap digunakan.")
             return
         time.sleep(1)
@@ -84,14 +86,26 @@ def wait_until_ready(port, timeout=120):
     raise RuntimeError("Model gagal start.")
 
 
-def stop_server(model_key):
-    if model_key in processes:
-        print(f"Menghentikan model {model_key}...")
-        processes[model_key].send_signal(signal.SIGINT)
-        processes[model_key].wait()
-        del processes[model_key]
+def stop_server():
+    global process
+
+    if process is None:
+        print("Model tidak sedang berjalan.")
+        return
+
+    print("Menghentikan model 7B...")
+    process.send_signal(signal.SIGINT)
+    process.wait()
+    process = None
+    print("Model berhenti.")
 
 
-def stop_all():
-    for model_key in list(processes.keys()):
-        stop_server(model_key)
+# =============================
+# ENTRY POINT (OPTIONAL)
+# =============================
+
+if __name__ == "__main__":
+    try:
+        start_server()
+    except KeyboardInterrupt:
+        stop_server()
