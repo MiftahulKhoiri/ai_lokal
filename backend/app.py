@@ -178,12 +178,60 @@ def stream():
     # =========================
     agent_response = agent.handle(user_message)
 
-    if agent_response:
+    # Jika agent return dict (contoh: analyze_file)
+    if isinstance(agent_response, dict):
+
+        if agent_response.get("action") == "analyze_file":
+            filename = agent_response.get("filename")
+
+            try:
+                file_content = agent.read_file(filename)
+
+                review_prompt = f"""
+Berikut isi file {filename}.
+Lakukan review teknis:
+- Jelaskan fungsi utama
+- Identifikasi bug
+- Berikan saran refactor
+- Nilai kualitas struktur kode
+
+Isi file:
+{file_content}
+"""
+
+                messages = [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": review_prompt}
+                ]
+
+                payload = build_payload(messages)
+
+                def generate_review():
+                    for chunk in call_model_stream(
+                        MODEL_ENDPOINTS["7b"],
+                        payload
+                    ):
+                        yield chunk
+
+                return Response(
+                    generate_review(),
+                    mimetype="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "X-Accel-Buffering": "no"
+                    }
+                )
+
+            except Exception as e:
+                return Response(f"Gagal analisa file: {e}", status=500)
+
+    # Jika agent return string biasa
+    if isinstance(agent_response, str):
         logger.info(f"[{request_id}] Agent executed")
         return Response(agent_response, mimetype="text/plain")
 
     # =========================
-    # SMART ROUTING
+    # NORMAL LLM FLOW
     # =========================
     if manual_model in MODEL_ENDPOINTS:
         model_choice = manual_model
