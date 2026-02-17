@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIRA - AI Rumah</title>
 
-    <!-- Flask static CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -17,15 +16,7 @@
         <button class="menu-btn">☰</button>
 
         <div class="header-title">
-            AIRA
-        </div>
-
-        <!-- MODEL SELECT -->
-        <div class="model-wrapper">
-            <select id="modelSelect" class="model-select">
-                <option value="3b">Qwen 3B (Cepat)</option>
-                <option value="7b">Qwen 7B (Akurat)</option>
-            </select>
+            AIRA <span class="model-badge">Qwen 7B</span>
         </div>
 
         <div class="header-actions">
@@ -61,12 +52,11 @@
         ></textarea>
 
         <button class="mic-btn">🎤</button>
-        <button id="sendBtn" class="voice-btn">⬤</button>
+        <button id="sendBtn" class="send-btn">Kirim</button>
     </div>
 
 </div>
 
-<!-- Flask static JS -->
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 
 </body>
