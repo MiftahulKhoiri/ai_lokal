@@ -5,16 +5,23 @@ import psutil
 from datetime import datetime
 from typing import Optional
 
+# =========================
+# WORKSPACE CONFIG
+# =========================
+
+WORKSPACE_ROOT = "/home/pi/ai_lokal/project"
+
 
 class Agent:
 
     def __init__(self):
-        self.pending_action = None  # untuk konfirmasi shutdown
+        self.pending_action = None  # konfirmasi shutdown
 
         self.tools = {
             "get_time": self.get_current_time,
             "get_system_status": self.get_system_status,
-            "shutdown": self.shutdown_pc
+            "shutdown": self.shutdown_pc,
+            "list_files": self.list_files,
         }
 
     # =========================
@@ -22,7 +29,7 @@ class Agent:
     # =========================
     def handle(self, user_message: str) -> Optional[str]:
 
-        # Cek konfirmasi shutdown dulu
+        # Konfirmasi shutdown
         if self.pending_action == "shutdown_confirm":
             if user_message.lower() in ["ya", "yes", "confirm", "oke"]:
                 self.pending_action = None
@@ -32,6 +39,14 @@ class Agent:
                 return "Shutdown dibatalkan."
 
         intent = self.detect_intent(user_message)
+
+        # Tool dengan parameter (baca file)
+        if intent == "read_file":
+            parts = user_message.split()
+            if len(parts) >= 3:
+                filename = parts[-1]
+                return self.read_file(filename)
+            return "Format: baca file namafile.py"
 
         if intent and intent in self.tools:
             return self.tools[intent]()
@@ -59,7 +74,30 @@ class Agent:
         if "shutdown" in text or "matikan komputer" in text:
             return "shutdown"
 
+        # Workspace
+        if "lihat project" in text or "list project" in text:
+            return "list_files"
+
+        if "baca file" in text:
+            return "read_file"
+
         return None
+
+    # =========================
+    # SECURITY
+    # =========================
+    def safe_path(self, relative_path: str) -> str:
+        """
+        Pastikan file tetap di dalam WORKSPACE_ROOT
+        """
+        full_path = os.path.abspath(
+            os.path.join(WORKSPACE_ROOT, relative_path)
+        )
+
+        if not full_path.startswith(os.path.abspath(WORKSPACE_ROOT)):
+            raise PermissionError("Akses ditolak: di luar workspace.")
+
+        return full_path
 
     # =========================
     # TOOLS
@@ -91,7 +129,7 @@ class Agent:
         ram = psutil.virtual_memory()
 
         return (
-            f"Status Sistem:\n"
+            "Status Sistem:\n"
             f"- CPU Usage: {cpu}%\n"
             f"- RAM Usage: {ram.percent}%\n"
             f"- RAM Tersedia: {round(ram.available / (1024**3), 2)} GB"
@@ -111,3 +149,33 @@ class Agent:
             return "Perintah shutdown dijalankan. Komputer akan mati."
         except Exception as e:
             return f"Gagal menjalankan shutdown: {e}"
+
+    # =========================
+    # WORKSPACE TOOLS
+    # =========================
+
+    def list_files(self) -> str:
+        try:
+            items = os.listdir(WORKSPACE_ROOT)
+            if not items:
+                return "Workspace kosong."
+
+            return "Isi workspace:\n" + "\n".join(items)
+
+        except Exception as e:
+            return f"Gagal membaca workspace: {e}"
+
+    def read_file(self, filename: str) -> str:
+        try:
+            path = self.safe_path(filename)
+
+            if not os.path.isfile(path):
+                return "File tidak ditemukan."
+
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read(8000)  # batas 8KB agar tidak overload LLM
+
+            return f"Isi file {filename}:\n\n{content}"
+
+        except Exception as e:
+            return f"Gagal membaca file: {e}"
