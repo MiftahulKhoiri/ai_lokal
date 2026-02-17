@@ -5,17 +5,13 @@ import psutil
 from datetime import datetime
 from typing import Optional
 
-# =========================
-# WORKSPACE CONFIG
-# =========================
-
 WORKSPACE_ROOT = "/home/pi/ai_lokal/project"
 
 
 class Agent:
 
     def __init__(self):
-        self.pending_action = None  # konfirmasi shutdown
+        self.pending_action = None
 
         self.tools = {
             "get_time": self.get_current_time,
@@ -27,7 +23,7 @@ class Agent:
     # =========================
     # PUBLIC ENTRY POINT
     # =========================
-    def handle(self, user_message: str) -> Optional[str]:
+    def handle(self, user_message: str):
 
         # Konfirmasi shutdown
         if self.pending_action == "shutdown_confirm":
@@ -40,7 +36,18 @@ class Agent:
 
         intent = self.detect_intent(user_message)
 
-        # Tool dengan parameter (baca file)
+        # ANALYZE FILE (return dict agar diproses app.py)
+        if intent == "analyze_file":
+            parts = user_message.split()
+            if len(parts) >= 3:
+                filename = parts[-1]
+                return {
+                    "action": "analyze_file",
+                    "filename": filename
+                }
+            return "Format: analisa file namafile.py"
+
+        # READ FILE
         if intent == "read_file":
             parts = user_message.split()
             if len(parts) >= 3:
@@ -54,32 +61,31 @@ class Agent:
         return None
 
     # =========================
-    # INTENT DETECTION
+    # INTENT
     # =========================
     def detect_intent(self, text: str) -> Optional[str]:
         text = text.lower()
 
-        # Waktu
         if "jam berapa" in text or "waktu sekarang" in text:
             return "get_time"
 
         if "hari apa" in text or "tanggal berapa" in text:
             return "get_time"
 
-        # System status
         if "cpu" in text or "ram" in text or "status sistem" in text:
             return "get_system_status"
 
-        # Shutdown
         if "shutdown" in text or "matikan komputer" in text:
             return "shutdown"
 
-        # Workspace
         if "lihat project" in text or "list project" in text:
             return "list_files"
 
         if "baca file" in text:
             return "read_file"
+
+        if "analisa file" in text or "review file" in text:
+            return "analyze_file"
 
         return None
 
@@ -87,9 +93,6 @@ class Agent:
     # SECURITY
     # =========================
     def safe_path(self, relative_path: str) -> str:
-        """
-        Pastikan file tetap di dalam WORKSPACE_ROOT
-        """
         full_path = os.path.abspath(
             os.path.join(WORKSPACE_ROOT, relative_path)
         )
@@ -100,7 +103,7 @@ class Agent:
         return full_path
 
     # =========================
-    # TOOLS
+    # SYSTEM TOOLS
     # =========================
 
     def get_current_time(self) -> str:
@@ -146,7 +149,7 @@ class Agent:
             else:
                 os.system("shutdown -h now")
 
-            return "Perintah shutdown dijalankan. Komputer akan mati."
+            return "Perintah shutdown dijalankan."
         except Exception as e:
             return f"Gagal menjalankan shutdown: {e}"
 
@@ -159,9 +162,7 @@ class Agent:
             items = os.listdir(WORKSPACE_ROOT)
             if not items:
                 return "Workspace kosong."
-
             return "Isi workspace:\n" + "\n".join(items)
-
         except Exception as e:
             return f"Gagal membaca workspace: {e}"
 
@@ -173,9 +174,8 @@ class Agent:
                 return "File tidak ditemukan."
 
             with open(path, "r", encoding="utf-8") as f:
-                content = f.read(8000)  # batas 8KB agar tidak overload LLM
+                content = f.read(8000)
 
-            return f"Isi file {filename}:\n\n{content}"
-
+            return content
         except Exception as e:
             return f"Gagal membaca file: {e}"
