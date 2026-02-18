@@ -1,3 +1,25 @@
+/* ================= ROOT ================= */
+
+:root {
+    --bg: #f7f7f8;
+    --surface: #ffffff;
+    --text: #111;
+    --subtle: #ececec;
+    --user: #1e88ff;
+    --code-bg: #1e1e1e;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f0f10;
+        --surface: #1a1a1c;
+        --text: #eaeaea;
+        --subtle: #2a2a2d;
+        --user: #2b8cff;
+        --code-bg: #111;
+    }
+}
+
 /* ================= BASE ================= */
 
 * {
@@ -9,7 +31,8 @@
 }
 
 body {
-    background: #f7f7f8;
+    background: var(--bg);
+    color: var(--text);
 }
 
 .app {
@@ -18,7 +41,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: #f7f7f8;
+    background: var(--bg);
 }
 
 /* ================= HEADER ================= */
@@ -28,13 +51,13 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    background: #ffffff;
-    border-bottom: 1px solid #ececec;
+    background: var(--surface);
+    border-bottom: 1px solid var(--subtle);
 }
 
 .menu-btn,
 .icon-btn {
-    background: #f2f2f2;
+    background: var(--subtle);
     border: none;
     padding: 8px 12px;
     border-radius: 20px;
@@ -52,32 +75,31 @@ body {
 
 .model-badge {
     font-size: 12px;
-    background: #1e88ff;
+    background: var(--user);
     color: white;
-    padding: 3px 9px;
+    padding: 3px 10px;
     border-radius: 14px;
 }
 
-/* ================= CHAT AREA ================= */
+/* ================= CHAT ================= */
 
 .chat-container {
     flex: 1;
-    padding: 20px 16px 10px 16px;
+    padding: 24px 16px 10px 16px;
     overflow-y: auto;
 }
 
-/* ================= MESSAGE BUBBLES ================= */
+/* ================= MESSAGE ================= */
 
 .message {
     margin-bottom: 18px;
-    padding: 14px 16px;
-    border-radius: 22px;
+    padding: 14px 18px;
+    border-radius: 24px;
     max-width: 85%;
     font-size: 15px;
-    line-height: 1.65;
-    word-wrap: break-word;
+    line-height: 1.7;
     position: relative;
-    animation: fadeIn 0.2s ease;
+    animation: fadeIn 0.25s ease;
 }
 
 @keyframes fadeIn {
@@ -87,16 +109,16 @@ body {
 
 .user {
     margin-left: auto;
-    background: #1e88ff;
+    background: var(--user);
     color: white;
-    border-bottom-right-radius: 8px;
+    border-bottom-right-radius: 10px;
 }
 
 .bot {
-    background: #ffffff;
-    color: #111;
-    border-bottom-left-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    background: var(--surface);
+    color: var(--text);
+    border-bottom-left-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 /* ================= CODE BLOCK ================= */
@@ -104,9 +126,9 @@ body {
 .bot .code-block {
     position: relative;
     margin-top: 14px;
-    border-radius: 18px;
+    border-radius: 20px;
     overflow: hidden;
-    background: #1e1e1e;
+    background: var(--code-bg);
 }
 
 .bot pre {
@@ -119,31 +141,26 @@ body {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.bot code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-/* Copy Button (ChatGPT style subtle) */
 .copy-btn {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 14px;
+    right: 14px;
     font-size: 12px;
     padding: 6px 12px;
     border: none;
-    border-radius: 14px;
+    border-radius: 16px;
     background: rgba(255,255,255,0.12);
     color: white;
     cursor: pointer;
-    backdrop-filter: blur(6px);
-    transition: background 0.2s ease;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
 }
 
 .copy-btn:hover {
-    background: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.25);
 }
 
-/* ================= TYPING INDICATOR ================= */
+/* ================= TYPING ================= */
 
 .typing {
     display: inline-flex;
@@ -166,31 +183,32 @@ body {
     40% { transform: scale(1); }
 }
 
-/* ================= INPUT BAR ================= */
+/* ================= INPUT ================= */
 
 .input-container {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 14px;
-    background: #ffffff;
-    border-top: 1px solid #ececec;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--subtle);
 }
 
 textarea {
     flex: 1;
     resize: none;
     border: none;
-    background: #f2f2f2;
-    border-radius: 22px;
+    background: var(--subtle);
+    border-radius: 24px;
     padding: 12px 16px;
     outline: none;
     font-size: 15px;
+    color: var(--text);
 }
 
 .send-btn {
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     border: none;
     background: #111;
