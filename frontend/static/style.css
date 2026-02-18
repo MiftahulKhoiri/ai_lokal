@@ -99,12 +99,13 @@ body {
 
 .message {
     margin-bottom: 12px;
-    padding: 10px 14px;
+    padding: 12px 14px;
     border-radius: 18px;
-    max-width: 80%;
+    max-width: 85%;
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.5;
     word-wrap: break-word;
+    position: relative;
 }
 
 .user {
@@ -115,22 +116,52 @@ body {
 
 .bot {
     background: #e5e5ea;
+    color: #111;
 }
 
-/* ===== CODE BLOCK STYLE ===== */
+/* ================= CODE BLOCK ================= */
+
+.bot .code-block {
+    position: relative;
+    margin-top: 10px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #1e1e1e;
+}
 
 .bot pre {
-    background: #1e1e1e;
-    color: #eaeaea;
-    padding: 12px;
-    border-radius: 12px;
+    margin: 0;
+    padding: 16px;
     overflow-x: auto;
-    margin-top: 8px;
     font-size: 13px;
+    line-height: 1.5;
+    color: #eaeaea;
+    font-family: "Courier New", monospace;
+    background: transparent;
 }
 
 .bot code {
     font-family: "Courier New", monospace;
+}
+
+/* Copy Button */
+.copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: rgba(0, 0, 0, 0.85);
 }
 
 /* ================= INPUT ================= */
@@ -195,22 +226,4 @@ textarea {
 @keyframes bounce {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
-}
-
-.code-block {
-    position: relative;
-    margin-top: 8px;
-}
-
-.copy-btn {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    font-size: 11px;
-    padding: 4px 8px;
-    border: none;
-    border-radius: 8px;
-    background: #007aff;
-    color: white;
-    cursor: pointer;
 }
