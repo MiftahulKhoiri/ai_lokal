@@ -125,12 +125,6 @@ def build_messages(user_message: str):
 
 === USER PROFILE ===
 {json.dumps(USER_PROFILE, indent=2)}
-
-Jika perlu menggunakan tool, balas HANYA dalam format JSON:
-{{
-  "action": "nama_action",
-  "params": {{}}
-}}
 """
 
     return (
@@ -156,7 +150,6 @@ def health():
         return jsonify({"model": r.status_code == 200})
     except requests.RequestException:
         return jsonify({"model": False})
-
 
 @app.route("/stream", methods=["POST"])
 def stream():
@@ -196,21 +189,21 @@ def stream():
                 # Coba eksekusi sebagai action JSON
                 action_result = agent.execute_action(current_reply)
 
-                # Jika bukan JSON action → berarti ini jawaban final
+                # Jika bukan JSON action → final answer
                 if action_result is None:
                     final_reply = current_reply
                     yield final_reply
                     break
 
-                # Jika tool dijalankan → tambahkan ke conversation
+                # Tambahkan reasoning step ke message
                 messages_local.append({
                     "role": "assistant",
                     "content": current_reply
                 })
 
                 messages_local.append({
-                    "role": "tool",
-                    "content": action_result
+                    "role": "assistant",
+                    "content": f"HASIL_TOOL:\n{action_result}"
                 })
 
                 logger.info(f"[{request_id}] Tool executed (step {step+1})")
@@ -240,7 +233,6 @@ def stream():
             "X-Accel-Buffering": "no"
         }
     )
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
