@@ -171,19 +171,54 @@ def stream():
 
     logger.info(f"[{request_id}] Incoming request")
 
-    messages = build_messages(user_message)
-    payload = build_payload(messages)
-
     def generate():
-        full_reply = ""
+        max_steps = 3
+        step = 0
+        final_reply = ""
+
+        messages_local = build_messages(user_message)
 
         try:
-            for chunk in call_model_stream(
-                MODEL_ENDPOINT,
-                payload
-            ):
-                full_reply += chunk
-                yield chunk
+            while step < max_steps:
+
+                payload = build_payload(messages_local)
+
+                current_reply = ""
+
+                for chunk in call_model_stream(
+                    MODEL_ENDPOINT,
+                    payload
+                ):
+                    current_reply += chunk
+
+                current_reply = current_reply.strip()
+
+                # Coba eksekusi sebagai action JSON
+                action_result = agent.execute_action(current_reply)
+
+                # Jika bukan JSON action → berarti ini jawaban final
+                if action_result is None:
+                    final_reply = current_reply
+                    yield final_reply
+                    break
+
+                # Jika tool dijalankan → tambahkan ke conversation
+                messages_local.append({
+                    "role": "assistant",
+                    "content": current_reply
+                })
+
+                messages_local.append({
+                    "role": "tool",
+                    "content": action_result
+                })
+
+                logger.info(f"[{request_id}] Tool executed (step {step+1})")
+
+                step += 1
+
+            else:
+                yield "⚠ Batas reasoning tercapai."
 
         except requests.RequestException as e:
             logger.error(f"[{request_id}] Model error: {e}")
@@ -192,21 +227,10 @@ def stream():
         finally:
             duration = round(time.time() - start_time, 2)
 
-            # =========================
-            # HYBRID TOOL EXECUTION
-            # =========================
-            action_result = agent.execute_action(full_reply.strip())
+            if final_reply.strip():
+                add_to_memory(user_message, final_reply)
 
-            if action_result:
-                yield "\n\n" + action_result
-                logger.info(f"[{request_id}] Tool executed")
-
-            if full_reply.strip():
-                add_to_memory(user_message, full_reply)
-
-            logger.info(
-                f"[{request_id}] Done | {duration}s"
-            )
+            logger.info(f"[{request_id}] Done | {duration}s")
 
     return Response(
         generate(),
