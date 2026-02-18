@@ -18,7 +18,7 @@ from backend.agent import Agent
 from backend.config_loader import load_all_configs
 
 # =============================
-# LOAD CONFIG FROM FILES
+# LOAD CONFIG
 # =============================
 
 configs = load_all_configs()
@@ -26,6 +26,8 @@ configs = load_all_configs()
 SYSTEM_PROMPT = configs["system_prompt"] or "Kamu adalah AI."
 AI_CONFIG = configs["ai_config"]
 USER_PROFILE = configs["user_profile"]
+REVIEW_CONFIG = configs["review_config"]
+AGENT_CONFIG = configs["agent_config"]
 
 MODEL_ENDPOINT = os.getenv(
     "MODEL_URL",
@@ -36,28 +38,7 @@ MAX_RESPONSE_TOKENS = AI_CONFIG.get("max_tokens", 256)
 TEMPERATURE = AI_CONFIG.get("temperature", 0.4)
 REQUEST_TIMEOUT = (5, 120)
 STM_LIMIT = AI_CONFIG.get("short_term_limit", 6)
-
-# Load review template
-DATA_DIR = "data"
-REVIEW_FILE = os.path.join(DATA_DIR, "file_review.json")
-
-if not os.path.exists(REVIEW_FILE):
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(REVIEW_FILE, "w", encoding="utf-8") as f:
-        json.dump({
-            "review_template": (
-                "Berikut isi file {filename}.\n"
-                "Lakukan review teknis:\n"
-                "- Jelaskan fungsi utama\n"
-                "- Identifikasi bug\n"
-                "- Berikan saran refactor\n"
-                "- Nilai kualitas struktur kode\n\n"
-                "Isi file:\n{content}"
-            )
-        }, f, indent=4)
-
-with open(REVIEW_FILE, "r", encoding="utf-8") as f:
-    REVIEW_CONFIG = json.load(f)
+WORKSPACE_ROOT = AI_CONFIG.get("workspace_root", ".")
 
 # =============================
 # APP INIT
@@ -72,7 +53,11 @@ app = Flask(
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
 load_memory()
-agent = Agent()
+
+agent = Agent(
+    agent_config=AGENT_CONFIG,
+    workspace_root=WORKSPACE_ROOT
+)
 
 # =============================
 # LOGGING
@@ -140,6 +125,12 @@ def build_messages(user_message: str):
 
 === USER PROFILE ===
 {json.dumps(USER_PROFILE, indent=2)}
+
+Jika perlu menggunakan tool, balas HANYA dalam format JSON:
+{{
+  "action": "nama_action",
+  "params": {{}}
+}}
 """
 
     return (
@@ -178,59 +169,6 @@ def stream():
     if not user_message:
         return Response("Pesan kosong", status=400)
 
-    # =========================
-    # AGENT LAYER
-    # =========================
-    agent_response = agent.handle(user_message)
-
-    if isinstance(agent_response, dict):
-
-        if agent_response.get("action") == "analyze_file":
-            filename = agent_response.get("filename")
-
-            try:
-                file_content = agent.read_file(filename)
-
-                review_template = REVIEW_CONFIG.get("review_template", "")
-                review_prompt = review_template.format(
-                    filename=filename,
-                    content=file_content
-                )
-
-                messages = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": review_prompt}
-                ]
-
-                payload = build_payload(messages)
-
-                def generate_review():
-                    for chunk in call_model_stream(
-                        MODEL_ENDPOINT,
-                        payload
-                    ):
-                        yield chunk
-
-                return Response(
-                    generate_review(),
-                    mimetype="text/event-stream",
-                    headers={
-                        "Cache-Control": "no-cache",
-                        "X-Accel-Buffering": "no"
-                    }
-                )
-
-            except Exception as e:
-                return Response(f"Gagal analisa file: {e}", status=500)
-
-    if isinstance(agent_response, str):
-        logger.info(f"[{request_id}] Agent executed")
-        return Response(agent_response, mimetype="text/plain")
-
-    # =========================
-    # NORMAL FLOW
-    # =========================
-
     logger.info(f"[{request_id}] Incoming request")
 
     messages = build_messages(user_message)
@@ -253,6 +191,15 @@ def stream():
 
         finally:
             duration = round(time.time() - start_time, 2)
+
+            # =========================
+            # HYBRID TOOL EXECUTION
+            # =========================
+            action_result = agent.execute_action(full_reply.strip())
+
+            if action_result:
+                yield "\n\n" + action_result
+                logger.info(f"[{request_id}] Tool executed")
 
             if full_reply.strip():
                 add_to_memory(user_message, full_reply)
