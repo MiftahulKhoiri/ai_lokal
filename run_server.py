@@ -11,20 +11,11 @@ MODEL_DIR = os.path.join(BASE_DIR, "models")
 
 LLAMA_PATH = "/home/pi5/llama.cpp/build/bin/llama-server"
 
-MODELS = {
-    "3b": {
-        "file": "qwen2.5-3b-instruct-q4_k_m.gguf",
-        "port": 8080
-    },
-    "7b": {
-        "file": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
-        "port": 8081
-    }
-}
-
+MODEL_FILE = "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+LLAMA_PORT = 8081
 FLASK_PORT = 5000
 
-llama_processes = {}
+llama_process = None
 gunicorn_process = None
 
 bootstrap()
@@ -37,59 +28,64 @@ def kill_port(port):
     os.system(f"fuser -k {port}/tcp > /dev/null 2>&1")
 
 
-def wait_for_llama(port, timeout=120):
-    print(f"[INFO] Menunggu llama-server port {port} siap...")
+def wait_for_llama(timeout=120):
+    print(f"[INFO] Menunggu llama-server port {LLAMA_PORT} siap...")
     start_time = time.time()
 
     while time.time() - start_time < timeout:
         try:
-            r = requests.get(f"http://127.0.0.1:{port}/health", timeout=2)
+            r = requests.get(
+                f"http://127.0.0.1:{LLAMA_PORT}/health",
+                timeout=2
+            )
             if r.status_code == 200:
-                print(f"[INFO] llama-server {port} siap.")
+                print("[INFO] llama-server siap.")
                 return True
         except:
             pass
         time.sleep(1)
 
-    raise RuntimeError(f"llama-server port {port} gagal start.")
+    raise RuntimeError("llama-server gagal start.")
 
 
 # ===============================
-# Start llama-server per model
+# Start llama-server
 # ===============================
-def start_llama(model_key):
-    model_info = MODELS[model_key]
-    port = model_info["port"]
-    model_path = os.path.join(MODEL_DIR, model_info["file"])
+def start_llama():
+    global llama_process
 
-    print(f"[INFO] Membersihkan port {port}...")
-    kill_port(port)
+    model_path = os.path.join(MODEL_DIR, MODEL_FILE)
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model tidak ditemukan: {model_path}")
+
+    print(f"[INFO] Membersihkan port {LLAMA_PORT}...")
+    kill_port(LLAMA_PORT)
 
     cmd = [
         LLAMA_PATH,
         "-m", model_path,
         "--host", "127.0.0.1",
-        "--port", str(port),
+        "--port", str(LLAMA_PORT),
         "--ctx-size", "2048",
         "--threads", "8",
         "--batch-size", "512",
         "--n-gpu-layers", "0"
     ]
 
-    print(f"[INFO] Menjalankan model {model_key} di port {port}...")
-    process = subprocess.Popen(cmd)
+    print("[INFO] Menjalankan model 7B...")
+    llama_process = subprocess.Popen(cmd)
 
-    llama_processes[model_key] = process
-    wait_for_llama(port)
+    wait_for_llama()
 
 
 # ===============================
-# Start Gunicorn (Streaming Friendly)
+# Start Gunicorn
 # ===============================
 def start_gunicorn():
     global gunicorn_process
 
-    print("[INFO] Membersihkan port 5000...")
+    print(f"[INFO] Membersihkan port {FLASK_PORT}...")
     kill_port(FLASK_PORT)
 
     cmd = [
@@ -116,8 +112,8 @@ def shutdown(signum, frame):
     if gunicorn_process:
         gunicorn_process.terminate()
 
-    for process in llama_processes.values():
-        process.terminate()
+    if llama_process:
+        llama_process.terminate()
 
     sys.exit(0)
 
@@ -134,11 +130,7 @@ if __name__ == "__main__":
     from backend.memory import load_memory
     load_memory()
 
-    # Start both models
-    start_llama("3b")
-    start_llama("7b")
-
-    # Start Flask via Gunicorn
+    start_llama()
     start_gunicorn()
 
     print("\n[INFO] AI Lokal Production Server Running")
