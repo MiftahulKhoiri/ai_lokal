@@ -15,9 +15,8 @@ messageInput.addEventListener("input", () => {
 // ================= MOBILE KEYBOARD FIX =================
 function adjustForKeyboard() {
     setTimeout(() => {
-        window.scrollTo(0, document.body.scrollHeight);
         scrollToBottom(true);
-    }, 300);
+    }, 250);
 }
 
 messageInput.addEventListener("focus", adjustForKeyboard);
@@ -32,7 +31,7 @@ sendBtn.addEventListener("click", () => {
 });
 
 // ================= ENTER =================
-messageInput.addEventListener("keypress", (e) => {
+messageInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendBtn.click();
@@ -56,9 +55,12 @@ function scrollToBottom(force = false) {
 // ================= MARKDOWN RENDER =================
 function renderMarkdown(text) {
     // Escape HTML
-    text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    text = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 
-    // Code block ```lang
+    // Code block
     text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
         return `
             <div class="code-block">
@@ -68,25 +70,21 @@ function renderMarkdown(text) {
         `;
     });
 
-    // Line breaks
+    // Line break
     text = text.replace(/\n/g, "<br>");
 
     return text;
 }
 
-// ================= COPY HANDLER =================
-function attachCopyEvents(container) {
-    const buttons = container.querySelectorAll(".copy-btn");
-
-    buttons.forEach(btn => {
-        btn.onclick = () => {
-            const code = btn.parentElement.querySelector("code").innerText;
-            navigator.clipboard.writeText(code);
-            btn.innerText = "Copied!";
-            setTimeout(() => btn.innerText = "Copy", 1500);
-        };
-    });
-}
+// ================= COPY (Delegated - No Rebinding) =================
+chatContainer.addEventListener("click", function (e) {
+    if (e.target.classList.contains("copy-btn")) {
+        const code = e.target.parentElement.querySelector("code").innerText;
+        navigator.clipboard.writeText(code);
+        e.target.innerText = "Copied!";
+        setTimeout(() => (e.target.innerText = "Copy"), 1200);
+    }
+});
 
 // ================= SEND MESSAGE =================
 async function sendMessage() {
@@ -97,6 +95,7 @@ async function sendMessage() {
     chatContainer.style.display = "block";
 
     addMessage(text, "user");
+
     messageInput.value = "";
     messageInput.style.height = "auto";
 
@@ -126,7 +125,6 @@ async function sendMessage() {
         const decoder = new TextDecoder("utf-8");
 
         let fullText = "";
-
         botBubble.innerHTML = "";
 
         while (true) {
@@ -137,7 +135,6 @@ async function sendMessage() {
             fullText += chunk;
 
             botBubble.innerHTML = renderMarkdown(fullText);
-            attachCopyEvents(botBubble);
             scrollToBottom();
         }
 
@@ -160,7 +157,6 @@ function addMessage(text, sender) {
 
     if (sender === "bot") {
         msg.innerHTML = renderMarkdown(text);
-        attachCopyEvents(msg);
     } else {
         msg.innerText = text;
     }
