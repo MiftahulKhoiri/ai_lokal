@@ -40,7 +40,7 @@ Jawaban teknis, ringkas, langsung ke inti.
 
 MAX_RESPONSE_TOKENS = 256
 REQUEST_TIMEOUT = (5, 120)
-STM_LIMIT = 6  # short-term memory limit
+STM_LIMIT = 6
 
 # =============================
 # APP INIT
@@ -115,7 +115,7 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
 
 
 def build_messages(user_message: str):
-    history = get_memory("7b")
+    history = get_memory()
     short_term = history[-STM_LIMIT:] if history else []
 
     return (
@@ -213,7 +213,7 @@ Isi file:
     # NORMAL LLM FLOW
     # =========================
 
-    logger.info(f"[{request_id}] Incoming | Model: 7b")
+    logger.info(f"[{request_id}] Incoming | Model: 7B")
 
     messages = build_messages(user_message)
     payload = build_payload(messages)
@@ -237,10 +237,10 @@ Isi file:
             duration = round(time.time() - start_time, 2)
 
             if full_reply.strip():
-                add_to_memory(user_message, full_reply, "7b")
+                add_to_memory(user_message, full_reply)
 
             logger.info(
-                f"[{request_id}] Done | Model: 7b | {duration}s"
+                f"[{request_id}] Done | Model: 7B | {duration}s"
             )
 
     return Response(
