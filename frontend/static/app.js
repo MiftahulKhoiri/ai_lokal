@@ -13,7 +13,7 @@ messageInput.addEventListener("input", () => {
     messageInput.style.height = messageInput.scrollHeight + "px";
 });
 
-/* ================= ENTER HANDLING ================= */
+/* ================= ENTER ================= */
 
 messageInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -22,7 +22,7 @@ messageInput.addEventListener("keydown", (e) => {
     }
 });
 
-/* ================= SCROLL SMART ================= */
+/* ================= SMART SCROLL ================= */
 
 function isNearBottom() {
     return (
@@ -49,10 +49,11 @@ function renderMarkdown(text) {
         .replace(/>/g, "&gt;");
 
     text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        const language = lang ? `language-${lang}` : "language-python";
         return `
             <div class="code-block">
                 <button class="copy-btn">Copy</button>
-                <pre><code>${code.trim()}</code></pre>
+                <pre><code class="${language}">${code.trim()}</code></pre>
             </div>
         `;
     });
@@ -61,7 +62,7 @@ function renderMarkdown(text) {
     return text;
 }
 
-/* ================= COPY (EVENT DELEGATION) ================= */
+/* ================= COPY HANDLER ================= */
 
 chatContainer.addEventListener("click", function (e) {
     if (e.target.classList.contains("copy-btn")) {
@@ -133,15 +134,23 @@ async function sendMessage() {
 
             const now = Date.now();
 
-            // throttle render biar smooth
             if (now - lastRender > 40) {
                 botBubble.innerHTML = renderMarkdown(fullText);
+
+                if (window.Prism) {
+                    Prism.highlightAllUnder(botBubble);
+                }
+
                 scrollToBottom();
                 lastRender = now;
             }
         }
 
         botBubble.innerHTML = renderMarkdown(fullText);
+
+        if (window.Prism) {
+            Prism.highlightAllUnder(botBubble);
+        }
 
     } catch (err) {
         if (err.name !== "AbortError") {
@@ -163,6 +172,11 @@ function addMessage(text, sender) {
 
     if (sender === "bot") {
         msg.innerHTML = renderMarkdown(text);
+
+        if (window.Prism) {
+            Prism.highlightAllUnder(msg);
+        }
+
     } else {
         msg.innerText = text;
     }
