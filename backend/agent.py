@@ -1,103 +1,88 @@
-# backend/agent.py
-
 import os
+import json
 import psutil
 from datetime import datetime
 from typing import Optional
 
-WORKSPACE_ROOT = "/home/pi/ai_lokal/project"
-
 
 class Agent:
 
-    def __init__(self):
+    def __init__(self, agent_config: dict, workspace_root: str):
         self.pending_action = None
+        self.agent_config = agent_config or {}
+        self.allowed_actions = self.agent_config.get("allowed_actions", {})
+        self.workspace_root = os.path.abspath(workspace_root)
 
         self.tools = {
             "get_time": self.get_current_time,
             "get_system_status": self.get_system_status,
-            "shutdown": self.shutdown_pc,
+            "shutdown": self.execute_shutdown,
             "list_files": self.list_files,
+            "read_file": self.read_file,
         }
 
     # =========================
-    # PUBLIC ENTRY POINT
+    # HYBRID ENTRY POINT
     # =========================
-    def handle(self, user_message: str):
 
-        # Konfirmasi shutdown
-        if self.pending_action == "shutdown_confirm":
-            if user_message.lower() in ["ya", "yes", "confirm", "oke"]:
+    def execute_action(self, action_json: str):
+        """
+        Expected JSON format:
+        {
+            "action": "get_time",
+            "params": {}
+        }
+        """
+
+        # Pending confirmation
+        if self.pending_action:
+            if action_json.lower() in ["ya", "yes", "confirm", "oke"]:
+                action = self.pending_action
                 self.pending_action = None
-                return self.execute_shutdown()
+                return self.tools[action]()
             else:
                 self.pending_action = None
-                return "Shutdown dibatalkan."
+                return "Aksi dibatalkan."
 
-        intent = self.detect_intent(user_message)
+        # Parse JSON
+        try:
+            data = json.loads(action_json)
+        except Exception:
+            return None  # bukan JSON → lanjut ke chat biasa
 
-        # ANALYZE FILE (return dict agar diproses app.py)
-        if intent == "analyze_file":
-            parts = user_message.split()
-            if len(parts) >= 3:
-                filename = parts[-1]
-                return {
-                    "action": "analyze_file",
-                    "filename": filename
-                }
-            return "Format: analisa file namafile.py"
+        action = data.get("action")
+        params = data.get("params", {})
 
-        # READ FILE
-        if intent == "read_file":
-            parts = user_message.split()
-            if len(parts) >= 3:
-                filename = parts[-1]
-                return self.read_file(filename)
-            return "Format: baca file namafile.py"
+        if action not in self.allowed_actions:
+            return None
 
-        if intent and intent in self.tools:
-            return self.tools[intent]()
+        rule = self.allowed_actions[action]
 
-        return None
+        if action not in self.tools:
+            return None
 
-    # =========================
-    # INTENT
-    # =========================
-    def detect_intent(self, text: str) -> Optional[str]:
-        text = text.lower()
+        # Jika perlu konfirmasi
+        if rule.get("confirm", False):
+            self.pending_action = action
+            return f"Konfirmasi untuk menjalankan '{action}'. Ketik 'ya' untuk lanjut."
 
-        if "jam berapa" in text or "waktu sekarang" in text:
-            return "get_time"
-
-        if "hari apa" in text or "tanggal berapa" in text:
-            return "get_time"
-
-        if "cpu" in text or "ram" in text or "status sistem" in text:
-            return "get_system_status"
-
-        if "shutdown" in text or "matikan komputer" in text:
-            return "shutdown"
-
-        if "lihat project" in text or "list project" in text:
-            return "list_files"
-
-        if "baca file" in text:
-            return "read_file"
-
-        if "analisa file" in text or "review file" in text:
-            return "analyze_file"
-
-        return None
+        try:
+            if params:
+                return self.tools[action](**params)
+            return self.tools[action]()
+        except Exception as e:
+            return f"Gagal menjalankan action: {e}"
 
     # =========================
     # SECURITY
     # =========================
+
     def safe_path(self, relative_path: str) -> str:
         full_path = os.path.abspath(
-            os.path.join(WORKSPACE_ROOT, relative_path)
+            os.path.join(self.workspace_root, relative_path)
         )
 
-        if not full_path.startswith(os.path.abspath(WORKSPACE_ROOT)):
+        if not full_path.startswith(self.workspace_root):
             raise PermissionError("Akses ditolak: di luar workspace.")
 
         return full_path
@@ -138,10 +123,6 @@ class Agent:
             f"- RAM Tersedia: {round(ram.available / (1024**3), 2)} GB"
         )
 
-    def shutdown_pc(self) -> str:
-        self.pending_action = "shutdown_confirm"
-        return "Apakah Anda yakin ingin mematikan komputer? Ketik 'ya' untuk konfirmasi."
-
     def execute_shutdown(self) -> str:
         try:
             if os.name == "nt":
@@ -159,7 +140,7 @@ class Agent:
 
     def list_files(self) -> str:
         try:
-            items = os.listdir(WORKSPACE_ROOT)
+            items = os.listdir(self.workspace_root)
             if not items:
                 return "Workspace kosong."
             return "Isi workspace:\n" + "\n".join(items)
@@ -174,8 +155,7 @@ class Agent:
                 return "File tidak ditemukan."
 
             with open(path, "r", encoding="utf-8") as f:
-                content = f.read(8000)
+                return f.read(8000)
 
-            return content
         except Exception as e:
             return f"Gagal membaca file: {e}"
