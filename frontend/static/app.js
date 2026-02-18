@@ -6,31 +6,15 @@ const homeScreen = document.getElementById("homeScreen");
 let controller = null;
 let isStreaming = false;
 
-// ================= AUTO RESIZE =================
+/* ================= AUTO RESIZE ================= */
+
 messageInput.addEventListener("input", () => {
     messageInput.style.height = "auto";
     messageInput.style.height = messageInput.scrollHeight + "px";
 });
 
-// ================= MOBILE KEYBOARD FIX =================
-function adjustForKeyboard() {
-    setTimeout(() => {
-        scrollToBottom(true);
-    }, 250);
-}
+/* ================= ENTER HANDLING ================= */
 
-messageInput.addEventListener("focus", adjustForKeyboard);
-
-// ================= SEND BUTTON =================
-sendBtn.addEventListener("click", () => {
-    if (isStreaming && controller) {
-        controller.abort();
-        return;
-    }
-    sendMessage();
-});
-
-// ================= ENTER =================
 messageInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -38,13 +22,17 @@ messageInput.addEventListener("keydown", (e) => {
     }
 });
 
-// ================= SCROLL =================
-function scrollToBottom(force = false) {
-    const nearBottom =
-        chatContainer.scrollHeight - chatContainer.scrollTop <=
-        chatContainer.clientHeight + 80;
+/* ================= SCROLL SMART ================= */
 
-    if (nearBottom || force) {
+function isNearBottom() {
+    return (
+        chatContainer.scrollHeight - chatContainer.scrollTop
+        <= chatContainer.clientHeight + 100
+    );
+}
+
+function scrollToBottom(force = false) {
+    if (force || isNearBottom()) {
         chatContainer.scrollTo({
             top: chatContainer.scrollHeight,
             behavior: "smooth"
@@ -52,15 +40,14 @@ function scrollToBottom(force = false) {
     }
 }
 
-// ================= MARKDOWN RENDER =================
+/* ================= MARKDOWN RENDER ================= */
+
 function renderMarkdown(text) {
-    // Escape HTML
     text = text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-    // Code block
     text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
         return `
             <div class="code-block">
@@ -70,23 +57,33 @@ function renderMarkdown(text) {
         `;
     });
 
-    // Line break
     text = text.replace(/\n/g, "<br>");
-
     return text;
 }
 
-// ================= COPY (Delegated - No Rebinding) =================
+/* ================= COPY (EVENT DELEGATION) ================= */
+
 chatContainer.addEventListener("click", function (e) {
     if (e.target.classList.contains("copy-btn")) {
         const code = e.target.parentElement.querySelector("code").innerText;
         navigator.clipboard.writeText(code);
-        e.target.innerText = "Copied!";
-        setTimeout(() => (e.target.innerText = "Copy"), 1200);
+        e.target.innerText = "Copied";
+        setTimeout(() => e.target.innerText = "Copy", 1200);
     }
 });
 
-// ================= SEND MESSAGE =================
+/* ================= SEND BUTTON ================= */
+
+sendBtn.addEventListener("click", () => {
+    if (isStreaming && controller) {
+        controller.abort();
+        return;
+    }
+    sendMessage();
+});
+
+/* ================= SEND MESSAGE ================= */
+
 async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
@@ -109,7 +106,7 @@ async function sendMessage() {
 
     controller = new AbortController();
     isStreaming = true;
-    sendBtn.innerText = "STOP";
+    sendBtn.innerText = "Stop";
 
     try {
         const response = await fetch("/stream", {
@@ -125,7 +122,7 @@ async function sendMessage() {
         const decoder = new TextDecoder("utf-8");
 
         let fullText = "";
-        botBubble.innerHTML = "";
+        let lastRender = 0;
 
         while (true) {
             const { value, done } = await reader.read();
@@ -134,9 +131,17 @@ async function sendMessage() {
             const chunk = decoder.decode(value, { stream: true });
             fullText += chunk;
 
-            botBubble.innerHTML = renderMarkdown(fullText);
-            scrollToBottom();
+            const now = Date.now();
+
+            // throttle render biar smooth
+            if (now - lastRender > 40) {
+                botBubble.innerHTML = renderMarkdown(fullText);
+                scrollToBottom();
+                lastRender = now;
+            }
         }
+
+        botBubble.innerHTML = renderMarkdown(fullText);
 
     } catch (err) {
         if (err.name !== "AbortError") {
@@ -150,7 +155,8 @@ async function sendMessage() {
     }
 }
 
-// ================= ADD MESSAGE =================
+/* ================= ADD MESSAGE ================= */
+
 function addMessage(text, sender) {
     const msg = document.createElement("div");
     msg.classList.add("message", sender);
