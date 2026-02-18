@@ -15,32 +15,49 @@ from backend.memory import (
 )
 
 from backend.agent import Agent
+from backend.config_loader import load_all_configs
 
 # =============================
-# CONFIG
+# LOAD CONFIG FROM FILES
 # =============================
+
+configs = load_all_configs()
+
+SYSTEM_PROMPT = configs["system_prompt"] or "Kamu adalah AI."
+AI_CONFIG = configs["ai_config"]
+USER_PROFILE = configs["user_profile"]
 
 MODEL_ENDPOINT = os.getenv(
     "MODEL_URL",
     "http://127.0.0.1:8081/v1/chat/completions"
 )
 
-SYSTEM_PROMPT = """Nama kamu adalah AIRA.
-AI Brain coding pribadi.
-
-Aturan:
-- Jika diminta menulis kode, tulis dalam 1 blok kode lengkap.
-- Jangan potong kode.
-- Jangan selipkan penjelasan di tengah kode.
-- Penjelasan singkat sebelum atau sesudah blok kode saja.
-- Kode harus siap copy-paste dan langsung jalan.
-- Gunakan format markdown ```python``` untuk Python.
-Jawaban teknis, ringkas, langsung ke inti.
-"""
-
-MAX_RESPONSE_TOKENS = 256
+MAX_RESPONSE_TOKENS = AI_CONFIG.get("max_tokens", 256)
+TEMPERATURE = AI_CONFIG.get("temperature", 0.4)
 REQUEST_TIMEOUT = (5, 120)
-STM_LIMIT = 6
+STM_LIMIT = AI_CONFIG.get("short_term_limit", 6)
+
+# Load review template
+DATA_DIR = "data"
+REVIEW_FILE = os.path.join(DATA_DIR, "file_review.json")
+
+if not os.path.exists(REVIEW_FILE):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(REVIEW_FILE, "w", encoding="utf-8") as f:
+        json.dump({
+            "review_template": (
+                "Berikut isi file {filename}.\n"
+                "Lakukan review teknis:\n"
+                "- Jelaskan fungsi utama\n"
+                "- Identifikasi bug\n"
+                "- Berikan saran refactor\n"
+                "- Nilai kualitas struktur kode\n\n"
+                "Isi file:\n{content}"
+            )
+        }, f, indent=4)
+
+with open(REVIEW_FILE, "r", encoding="utf-8") as f:
+    REVIEW_CONFIG = json.load(f)
 
 # =============================
 # APP INIT
@@ -75,7 +92,7 @@ logger = logging.getLogger("AIRA")
 def build_payload(messages: list) -> Dict:
     return {
         "messages": messages,
-        "temperature": 0.4,
+        "temperature": TEMPERATURE,
         "max_tokens": MAX_RESPONSE_TOKENS,
         "stream": True
     }
@@ -118,8 +135,15 @@ def build_messages(user_message: str):
     history = get_memory()
     short_term = history[-STM_LIMIT:] if history else []
 
+    system_block = f"""
+{SYSTEM_PROMPT}
+
+=== USER PROFILE ===
+{json.dumps(USER_PROFILE, indent=2)}
+"""
+
     return (
-        [{"role": "system", "content": SYSTEM_PROMPT}]
+        [{"role": "system", "content": system_block}]
         + short_term
         + [{"role": "user", "content": user_message}]
     )
@@ -138,9 +162,9 @@ def health():
     try:
         health_url = MODEL_ENDPOINT.replace("/v1/chat/completions", "/health")
         r = requests.get(health_url, timeout=2)
-        return jsonify({"7b": r.status_code == 200})
+        return jsonify({"model": r.status_code == 200})
     except requests.RequestException:
-        return jsonify({"7b": False})
+        return jsonify({"model": False})
 
 
 @app.route("/stream", methods=["POST"])
@@ -167,17 +191,11 @@ def stream():
             try:
                 file_content = agent.read_file(filename)
 
-                review_prompt = f"""
-Berikut isi file {filename}.
-Lakukan review teknis:
-- Jelaskan fungsi utama
-- Identifikasi bug
-- Berikan saran refactor
-- Nilai kualitas struktur kode
-
-Isi file:
-{file_content}
-"""
+                review_template = REVIEW_CONFIG.get("review_template", "")
+                review_prompt = review_template.format(
+                    filename=filename,
+                    content=file_content
+                )
 
                 messages = [
                     {"role": "system", "content": SYSTEM_PROMPT},
@@ -210,10 +228,10 @@ Isi file:
         return Response(agent_response, mimetype="text/plain")
 
     # =========================
-    # NORMAL LLM FLOW
+    # NORMAL FLOW
     # =========================
 
-    logger.info(f"[{request_id}] Incoming | Model: 7B")
+    logger.info(f"[{request_id}] Incoming request")
 
     messages = build_messages(user_message)
     payload = build_payload(messages)
@@ -240,7 +258,7 @@ Isi file:
                 add_to_memory(user_message, full_reply)
 
             logger.info(
-                f"[{request_id}] Done | Model: 7B | {duration}s"
+                f"[{request_id}] Done | {duration}s"
             )
 
     return Response(
