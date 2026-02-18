@@ -11,6 +11,30 @@ FILES = {
     "agent": "agent.json",
 }
 
+# =============================
+# DEFAULT DATA
+# =============================
+
+DEFAULT_SYSTEM_PROMPT = """Nama kamu adalah AIRA.
+AI Brain coding pribadi.
+
+Aturan umum:
+- Jawaban teknis, ringkas, langsung ke inti.
+- Jika diminta menulis kode, tulis dalam 1 blok kode lengkap.
+- Jangan potong kode.
+- Jangan selipkan penjelasan di tengah kode.
+- Penjelasan boleh sebelum atau sesudah blok kode.
+
+Tool usage rules:
+- Jika menggunakan tool, balas hanya dalam format JSON:
+  {
+    "action": "nama_action",
+    "params": {}
+  }
+- Setelah menerima hasil tool, berikan jawaban final untuk user.
+- Jangan memanggil tool tanpa alasan jelas.
+"""
+
 DEFAULT_AI_CONFIG = {
     "model_name": "7B",
     "max_tokens": 256,
@@ -50,7 +74,6 @@ DEFAULT_AGENT_CONFIG = {
     }
 }
 
-
 # =============================
 # INTERNAL UTILITIES
 # =============================
@@ -63,7 +86,6 @@ def _safe_load_json(path: str, default_data: dict):
                 raise ValueError("Empty JSON file")
             return json.loads(content)
     except Exception:
-        # Reset jika kosong / corrupt
         with open(path, "w", encoding="utf-8") as f:
             json.dump(default_data, f, indent=4)
         return default_data
@@ -82,24 +104,34 @@ def _ensure_json_file(path: str, default_data: dict):
 def ensure_data_files():
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    # Prompt (text)
+    # =============================
+    # SYSTEM PROMPT (TEXT FILE)
+    # =============================
     prompt_path = os.path.join(DATA_DIR, FILES["prompt"])
+
     if not os.path.exists(prompt_path):
         with open(prompt_path, "w", encoding="utf-8") as f:
-            f.write("")
+            f.write(DEFAULT_SYSTEM_PROMPT)
+    else:
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+        if not content:
+            with open(prompt_path, "w", encoding="utf-8") as f:
+                f.write(DEFAULT_SYSTEM_PROMPT)
 
-    # JSON files
-    for key in ["ai", "user", "review", "agent"]:
+    # =============================
+    # JSON FILES
+    # =============================
+    json_defaults = {
+        "ai": DEFAULT_AI_CONFIG,
+        "user": DEFAULT_USER_PROFILE,
+        "review": DEFAULT_REVIEW_CONFIG,
+        "agent": DEFAULT_AGENT_CONFIG
+    }
+
+    for key, default_data in json_defaults.items():
         path = os.path.join(DATA_DIR, FILES[key])
-
-        if key == "ai":
-            _ensure_json_file(path, DEFAULT_AI_CONFIG)
-        elif key == "user":
-            _ensure_json_file(path, DEFAULT_USER_PROFILE)
-        elif key == "review":
-            _ensure_json_file(path, DEFAULT_REVIEW_CONFIG)
-        elif key == "agent":
-            _ensure_json_file(path, DEFAULT_AGENT_CONFIG)
+        _ensure_json_file(path, default_data)
 
 
 def load_text_file(filename: str) -> str:
