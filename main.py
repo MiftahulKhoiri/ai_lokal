@@ -32,11 +32,8 @@ if __name__ == "__main__":
     print("[INFO] Loading memory...")
     load_memory()
 
-    print("[INFO] Starting llama servers...")
-
-    # 🔥 START BOTH MODELS
-    start_server("3b")
-    start_server("7b")
+    print("[INFO] Starting 7B model...")
+    start_server()  # ✅ TANPA PARAMETER
 
     local_ip = get_local_ip()
 
@@ -48,6 +45,5 @@ if __name__ == "__main__":
         app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
 
     finally:
-        print("[INFO] Shutting down llama servers...")
-        stop_server("3b")
-        stop_server("7b")
+        print("[INFO] Shutting down model...")
+        stop_server()  # ✅ TANPA PARAMETER
