@@ -8,6 +8,7 @@ FILES = {
     "ai": "ai_config.json",
     "user": "user_profile.json",
     "review": "file_review.json",
+    "agent": "agent.json",
 }
 
 DEFAULT_AI_CONFIG = {
@@ -15,7 +16,8 @@ DEFAULT_AI_CONFIG = {
     "max_tokens": 256,
     "temperature": 0.4,
     "stream": True,
-    "short_term_limit": 6
+    "short_term_limit": 6,
+    "workspace_root": "/home/pi/ai_lokal/project"
 }
 
 DEFAULT_USER_PROFILE = {
@@ -37,6 +39,17 @@ DEFAULT_REVIEW_CONFIG = {
     )
 }
 
+DEFAULT_AGENT_CONFIG = {
+    "allowed_actions": {
+        "get_time": {"confirm": False},
+        "get_system_status": {"confirm": False},
+        "shutdown": {"confirm": True},
+        "list_files": {"confirm": False},
+        "read_file": {"confirm": False},
+        "analyze_file": {"confirm": False}
+    }
+}
+
 
 # =============================
 # INTERNAL UTILITIES
@@ -45,9 +58,12 @@ DEFAULT_REVIEW_CONFIG = {
 def _safe_load_json(path: str, default_data: dict):
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            content = f.read().strip()
+            if not content:
+                raise ValueError("Empty JSON file")
+            return json.loads(content)
     except Exception:
-        # Jika corrupt → reset ke default
+        # Reset jika kosong / corrupt
         with open(path, "w", encoding="utf-8") as f:
             json.dump(default_data, f, indent=4)
         return default_data
@@ -72,17 +88,18 @@ def ensure_data_files():
         with open(prompt_path, "w", encoding="utf-8") as f:
             f.write("")
 
-    # AI config
-    ai_path = os.path.join(DATA_DIR, FILES["ai"])
-    _ensure_json_file(ai_path, DEFAULT_AI_CONFIG)
+    # JSON files
+    for key in ["ai", "user", "review", "agent"]:
+        path = os.path.join(DATA_DIR, FILES[key])
 
-    # User profile
-    user_path = os.path.join(DATA_DIR, FILES["user"])
-    _ensure_json_file(user_path, DEFAULT_USER_PROFILE)
-
-    # Review config
-    review_path = os.path.join(DATA_DIR, FILES["review"])
-    _ensure_json_file(review_path, DEFAULT_REVIEW_CONFIG)
+        if key == "ai":
+            _ensure_json_file(path, DEFAULT_AI_CONFIG)
+        elif key == "user":
+            _ensure_json_file(path, DEFAULT_USER_PROFILE)
+        elif key == "review":
+            _ensure_json_file(path, DEFAULT_REVIEW_CONFIG)
+        elif key == "agent":
+            _ensure_json_file(path, DEFAULT_AGENT_CONFIG)
 
 
 def load_text_file(filename: str) -> str:
@@ -96,13 +113,22 @@ def load_text_file(filename: str) -> str:
 def load_all_configs():
     ensure_data_files()
 
-    ai_path = os.path.join(DATA_DIR, FILES["ai"])
-    user_path = os.path.join(DATA_DIR, FILES["user"])
-    review_path = os.path.join(DATA_DIR, FILES["review"])
-
     return {
         "system_prompt": load_text_file(FILES["prompt"]),
-        "ai_config": _safe_load_json(ai_path, DEFAULT_AI_CONFIG),
-        "user_profile": _safe_load_json(user_path, DEFAULT_USER_PROFILE),
-        "review_config": _safe_load_json(review_path, DEFAULT_REVIEW_CONFIG),
+        "ai_config": _safe_load_json(
+            os.path.join(DATA_DIR, FILES["ai"]),
+            DEFAULT_AI_CONFIG
+        ),
+        "user_profile": _safe_load_json(
+            os.path.join(DATA_DIR, FILES["user"]),
+            DEFAULT_USER_PROFILE
+        ),
+        "review_config": _safe_load_json(
+            os.path.join(DATA_DIR, FILES["review"]),
+            DEFAULT_REVIEW_CONFIG
+        ),
+        "agent_config": _safe_load_json(
+            os.path.join(DATA_DIR, FILES["agent"]),
+            DEFAULT_AGENT_CONFIG
+        ),
     }
