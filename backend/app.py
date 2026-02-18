@@ -164,8 +164,27 @@ def stream():
 
     logger.info(f"[{request_id}] Incoming request")
 
+    # =========================
+    # FAST DIRECT TOOL ROUTING
+    # =========================
+    lower_msg = user_message.lower()
+
+    if any(k in lower_msg for k in ["jam", "hari", "tanggal"]):
+        result = agent.get_current_time()
+        logger.info(f"[{request_id}] Direct time tool executed")
+        return Response(result, mimetype="text/plain")
+
+    if any(k in lower_msg for k in ["cpu", "ram", "status sistem"]):
+        result = agent.get_system_status()
+        logger.info(f"[{request_id}] Direct system tool executed")
+        return Response(result, mimetype="text/plain")
+
+    # =========================
+    # NORMAL HYBRID LOOP
+    # =========================
+
     def generate():
-        max_steps = 3
+        max_steps = 2
         step = 0
         final_reply = ""
 
@@ -186,16 +205,13 @@ def stream():
 
                 current_reply = current_reply.strip()
 
-                # Coba eksekusi sebagai action JSON
                 action_result = agent.execute_action(current_reply)
 
-                # Jika bukan JSON action → final answer
                 if action_result is None:
                     final_reply = current_reply
                     yield final_reply
                     break
 
-                # Tambahkan reasoning step ke message
                 messages_local.append({
                     "role": "assistant",
                     "content": current_reply
@@ -207,7 +223,6 @@ def stream():
                 })
 
                 logger.info(f"[{request_id}] Tool executed (step {step+1})")
-
                 step += 1
 
             else:
@@ -233,6 +248,7 @@ def stream():
             "X-Accel-Buffering": "no"
         }
     )
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
