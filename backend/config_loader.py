@@ -19,24 +19,14 @@ DEFAULT_SYSTEM_PROMPT = """Nama kamu adalah AIRA.
 AI asisten pribadi oleh user.
 
 Aturan umum:
-- mulai dengan menjawab salam dengan benar.(waalaikumsalam warahmatullahi wabarakatuh) 
-_ user paling suka di ajak diskusi agama islam. 
+- Mulai dengan menjawab salam dengan benar (waalaikumsalam warahmatullahi wabarakatuh).
+- User paling suka diajak diskusi agama Islam.
 - Jawaban teknis, ringkas, langsung ke inti.
 - Jika diminta menulis kode, tulis dalam 1 blok kode lengkap.
 - Jangan potong kode.
 - Jangan selipkan penjelasan di tengah kode.
 - Penjelasan boleh sebelum atau sesudah blok kode.
-
-Tool usage rules:
-- Jika menggunakan tool, balas hanya dalam format JSON:
-  {
-    "action": "nama_action",
-    "params": {}
-  }
-- Setelah menerima hasil tool, berikan jawaban final untuk user.
-- Jangan memanggil tool tanpa alasan jelas.
-_ jika di ajak ber diskusi jelaskan dengan benar jangan asal- asalan
-
+- Jika diajak berdiskusi, jelaskan dengan benar dan tidak asal-asalan.
 """
 
 DEFAULT_AI_CONFIG = {
@@ -100,6 +90,34 @@ def _ensure_json_file(path: str, default_data: dict):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(default_data, f, indent=4)
 
+# =============================
+# TOOL PROMPT BUILDER
+# =============================
+
+def build_tool_instruction(agent_config: dict) -> str:
+    tools = agent_config.get("allowed_actions", {})
+
+    tool_lines = ""
+    for tool_name, rule in tools.items():
+        confirm_text = " (butuh konfirmasi)" if rule.get("confirm") else ""
+        tool_lines += f"- {tool_name}{confirm_text}\n"
+
+    return f"""
+
+=== AVAILABLE TOOLS ===
+{tool_lines}
+
+Aturan penggunaan tool:
+- Jika pertanyaan membutuhkan data sistem nyata (waktu, CPU, RAM, file),
+  WAJIB menggunakan tool.
+- Jangan menjawab berdasarkan asumsi.
+- Jika menggunakan tool, balas HANYA dalam format JSON:
+  {{
+    "action": "nama_action",
+    "params": {{}}
+  }}
+- Setelah menerima hasil tool, berikan jawaban final ke user.
+"""
 
 # =============================
 # MAIN FUNCTIONS
@@ -108,9 +126,6 @@ def _ensure_json_file(path: str, default_data: dict):
 def ensure_data_files():
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    # =============================
-    # SYSTEM PROMPT (TEXT FILE)
-    # =============================
     prompt_path = os.path.join(DATA_DIR, FILES["prompt"])
 
     if not os.path.exists(prompt_path):
@@ -123,9 +138,6 @@ def ensure_data_files():
             with open(prompt_path, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_SYSTEM_PROMPT)
 
-    # =============================
-    # JSON FILES
-    # =============================
     json_defaults = {
         "ai": DEFAULT_AI_CONFIG,
         "user": DEFAULT_USER_PROFILE,
@@ -149,8 +161,17 @@ def load_text_file(filename: str) -> str:
 def load_all_configs():
     ensure_data_files()
 
+    base_prompt = load_text_file(FILES["prompt"])
+
+    agent_config = _safe_load_json(
+        os.path.join(DATA_DIR, FILES["agent"]),
+        DEFAULT_AGENT_CONFIG
+    )
+
+    final_prompt = base_prompt + build_tool_instruction(agent_config)
+
     return {
-        "system_prompt": load_text_file(FILES["prompt"]),
+        "system_prompt": final_prompt,
         "ai_config": _safe_load_json(
             os.path.join(DATA_DIR, FILES["ai"]),
             DEFAULT_AI_CONFIG
@@ -163,8 +184,5 @@ def load_all_configs():
             os.path.join(DATA_DIR, FILES["review"]),
             DEFAULT_REVIEW_CONFIG
         ),
-        "agent_config": _safe_load_json(
-            os.path.join(DATA_DIR, FILES["agent"]),
-            DEFAULT_AGENT_CONFIG
-        ),
+        "agent_config": agent_config,
     }
