@@ -132,13 +132,13 @@ async function sendMessage() {
 
             buffer += decoder.decode(value, { stream: true });
 
-            const parts = buffer.split("\n\n");
-            buffer = parts.pop(); // sisa event yang belum lengkap
+            const events = buffer.split("\n\n");
+            buffer = events.pop();
 
-            for (const part of parts) {
-                if (!part.startsWith("data: ")) continue;
+            for (const event of events) {
+                if (!event.startsWith("data: ")) continue;
 
-                const data = part.replace("data: ", "").trim();
+                const data = event.replace("data: ", "");
 
                 if (data === "[DONE]") {
                     isStreaming = false;
@@ -191,7 +191,6 @@ function addMessage(text, sender) {
         if (window.Prism) {
             Prism.highlightAllUnder(msg);
         }
-
     } else {
         msg.innerText = text;
     }
