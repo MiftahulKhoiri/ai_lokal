@@ -2,71 +2,40 @@ const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("message");
 const chatContainer = document.getElementById("chat");
 const hero = document.getElementById("hero");
+const aiStatus = document.getElementById("aiStatus");
+const topProgress = document.getElementById("topProgress");
 
 let controller = null;
 let isStreaming = false;
+
+/* ================= STATE MANAGEMENT ================= */
+
+function setState(state) {
+    if (state === "idle") {
+        aiStatus.innerText = "Idle";
+        topProgress.style.width = "0%";
+    }
+
+    if (state === "thinking") {
+        aiStatus.innerText = "Thinking...";
+        topProgress.style.width = "60%";
+    }
+
+    if (state === "responding") {
+        aiStatus.innerText = "Responding...";
+        topProgress.style.width = "90%";
+    }
+}
 
 /* ================= AUTO RESIZE ================= */
 
 messageInput.addEventListener("input", () => {
     messageInput.style.height = "auto";
     messageInput.style.height = messageInput.scrollHeight + "px";
-
     sendBtn.disabled = messageInput.value.trim().length === 0;
 });
 
-/* ================= ENTER SEND ================= */
-
-messageInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        if (!sendBtn.disabled) sendBtn.click();
-    }
-});
-
-/* ================= SCROLL ================= */
-
-function scrollToBottom(force = false) {
-    chatContainer.scrollTo({
-        top: chatContainer.scrollHeight,
-        behavior: "smooth"
-    });
-}
-
-/* ================= MARKDOWN ================= */
-
-function renderMarkdown(text) {
-    text = text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-        const language = lang ? `language-${lang}` : "language-python";
-        return `
-            <div class="code-block">
-                <button class="copy-btn">Copy</button>
-                <pre><code class="${language}">${code.trim()}</code></pre>
-            </div>
-        `;
-    });
-
-    text = text.replace(/\n/g, "<br>");
-    return text;
-}
-
-/* ================= COPY BUTTON ================= */
-
-chatContainer.addEventListener("click", function (e) {
-    if (e.target.classList.contains("copy-btn")) {
-        const code = e.target.parentElement.querySelector("code").innerText;
-        navigator.clipboard.writeText(code);
-        e.target.innerText = "Copied";
-        setTimeout(() => e.target.innerText = "Copy", 1200);
-    }
-});
-
-/* ================= SEND BUTTON ================= */
+/* ================= SEND ================= */
 
 sendBtn.addEventListener("click", () => {
     if (isStreaming && controller) {
@@ -76,13 +45,10 @@ sendBtn.addEventListener("click", () => {
     sendMessage();
 });
 
-/* ================= SEND MESSAGE ================= */
-
 async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
 
-    // Hero collapse
     if (hero) hero.classList.add("hide");
 
     addMessage(text, "user");
@@ -91,11 +57,19 @@ async function sendMessage() {
     messageInput.style.height = "auto";
     sendBtn.disabled = true;
 
-    // Micro animation
     sendBtn.classList.add("sending");
     setTimeout(() => sendBtn.classList.remove("sending"), 600);
 
     const botBubble = addMessage("", "bot");
+
+    botBubble.innerHTML = `
+        <div class="thinking">
+            <div class="thinking-ring"></div>
+            AIRA sedang berpikir
+        </div>
+    `;
+
+    setState("thinking");
 
     controller = new AbortController();
     isStreaming = true;
@@ -115,6 +89,7 @@ async function sendMessage() {
 
         let fullText = "";
         let buffer = "";
+        let firstToken = false;
 
         while (true) {
             const { value, done } = await reader.read();
@@ -135,6 +110,11 @@ async function sendMessage() {
                     break;
                 }
 
+                if (!firstToken) {
+                    firstToken = true;
+                    setState("responding");
+                }
+
                 fullText += data;
 
                 botBubble.innerHTML =
@@ -142,44 +122,45 @@ async function sendMessage() {
                     '<span class="cursor">|</span>';
 
                 scrollToBottom();
-
-                if (window.Prism) {
-                    Prism.highlightAllUnder(botBubble);
-                }
             }
         }
 
-        // Remove cursor when done
         botBubble.innerHTML = renderMarkdown(fullText);
-
-        if (window.Prism) {
-            Prism.highlightAllUnder(botBubble);
-        }
+        setState("idle");
 
     } catch (err) {
-        if (err.name !== "AbortError") {
-            botBubble.innerText = "⚠ Koneksi ke model gagal.";
-        }
+        botBubble.innerText = "⚠ Koneksi gagal.";
+        setState("idle");
     } finally {
         isStreaming = false;
         controller = null;
-        scrollToBottom(true);
+        topProgress.style.width = "100%";
+        setTimeout(() => setState("idle"), 400);
     }
 }
 
-/* ================= ADD MESSAGE ================= */
+/* ================= RENDER ================= */
+
+function renderMarkdown(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br>");
+}
+
+function scrollToBottom() {
+    chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: "smooth"
+    });
+}
 
 function addMessage(text, sender) {
     const msg = document.createElement("div");
     msg.classList.add("message", sender);
-
-    if (sender === "bot") {
-        msg.innerHTML = renderMarkdown(text);
-    } else {
-        msg.innerText = text;
-    }
-
+    msg.innerHTML = text;
     chatContainer.appendChild(msg);
-    scrollToBottom(true);
+    scrollToBottom();
     return msg;
 }
