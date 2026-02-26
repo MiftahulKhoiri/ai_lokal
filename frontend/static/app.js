@@ -123,26 +123,41 @@ async function sendMessage() {
         const decoder = new TextDecoder("utf-8");
 
         let fullText = "";
+        let buffer = "";
         let lastRender = 0;
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value, { stream: true });
-            fullText += chunk;
+            buffer += decoder.decode(value, { stream: true });
 
-            const now = Date.now();
+            const parts = buffer.split("\n\n");
+            buffer = parts.pop(); // sisa event yang belum lengkap
 
-            if (now - lastRender > 40) {
-                botBubble.innerHTML = renderMarkdown(fullText);
+            for (const part of parts) {
+                if (!part.startsWith("data: ")) continue;
 
-                if (window.Prism) {
-                    Prism.highlightAllUnder(botBubble);
+                const data = part.replace("data: ", "").trim();
+
+                if (data === "[DONE]") {
+                    isStreaming = false;
+                    break;
                 }
 
-                scrollToBottom();
-                lastRender = now;
+                fullText += data;
+
+                const now = Date.now();
+                if (now - lastRender > 40) {
+                    botBubble.innerHTML = renderMarkdown(fullText);
+
+                    if (window.Prism) {
+                        Prism.highlightAllUnder(botBubble);
+                    }
+
+                    scrollToBottom();
+                    lastRender = now;
+                }
             }
         }
 
