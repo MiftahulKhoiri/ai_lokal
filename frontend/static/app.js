@@ -1,7 +1,7 @@
 const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("message");
 const chatContainer = document.getElementById("chat");
-const homeScreen = document.getElementById("homeScreen");
+const hero = document.getElementById("hero");
 
 let controller = null;
 let isStreaming = false;
@@ -11,36 +11,29 @@ let isStreaming = false;
 messageInput.addEventListener("input", () => {
     messageInput.style.height = "auto";
     messageInput.style.height = messageInput.scrollHeight + "px";
+
+    sendBtn.disabled = messageInput.value.trim().length === 0;
 });
 
-/* ================= ENTER ================= */
+/* ================= ENTER SEND ================= */
 
 messageInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        sendBtn.click();
+        if (!sendBtn.disabled) sendBtn.click();
     }
 });
 
-/* ================= SMART SCROLL ================= */
-
-function isNearBottom() {
-    return (
-        chatContainer.scrollHeight - chatContainer.scrollTop
-        <= chatContainer.clientHeight + 100
-    );
-}
+/* ================= SCROLL ================= */
 
 function scrollToBottom(force = false) {
-    if (force || isNearBottom()) {
-        chatContainer.scrollTo({
-            top: chatContainer.scrollHeight,
-            behavior: "smooth"
-        });
-    }
+    chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: "smooth"
+    });
 }
 
-/* ================= MARKDOWN RENDER ================= */
+/* ================= MARKDOWN ================= */
 
 function renderMarkdown(text) {
     text = text
@@ -62,7 +55,7 @@ function renderMarkdown(text) {
     return text;
 }
 
-/* ================= COPY HANDLER ================= */
+/* ================= COPY BUTTON ================= */
 
 chatContainer.addEventListener("click", function (e) {
     if (e.target.classList.contains("copy-btn")) {
@@ -89,25 +82,23 @@ async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
 
-    homeScreen.style.display = "none";
-    chatContainer.style.display = "block";
+    // Hero collapse
+    if (hero) hero.classList.add("hide");
 
     addMessage(text, "user");
 
     messageInput.value = "";
     messageInput.style.height = "auto";
+    sendBtn.disabled = true;
+
+    // Micro animation
+    sendBtn.classList.add("sending");
+    setTimeout(() => sendBtn.classList.remove("sending"), 600);
 
     const botBubble = addMessage("", "bot");
 
-    botBubble.innerHTML = `
-        <span class="typing">
-            <span></span><span></span><span></span>
-        </span>
-    `;
-
     controller = new AbortController();
     isStreaming = true;
-    sendBtn.innerText = "Stop";
 
     try {
         const response = await fetch("/stream", {
@@ -124,7 +115,6 @@ async function sendMessage() {
 
         let fullText = "";
         let buffer = "";
-        let lastRender = 0;
 
         while (true) {
             const { value, done } = await reader.read();
@@ -147,20 +137,19 @@ async function sendMessage() {
 
                 fullText += data;
 
-                const now = Date.now();
-                if (now - lastRender > 40) {
-                    botBubble.innerHTML = renderMarkdown(fullText);
+                botBubble.innerHTML =
+                    renderMarkdown(fullText) +
+                    '<span class="cursor">|</span>';
 
-                    if (window.Prism) {
-                        Prism.highlightAllUnder(botBubble);
-                    }
+                scrollToBottom();
 
-                    scrollToBottom();
-                    lastRender = now;
+                if (window.Prism) {
+                    Prism.highlightAllUnder(botBubble);
                 }
             }
         }
 
+        // Remove cursor when done
         botBubble.innerHTML = renderMarkdown(fullText);
 
         if (window.Prism) {
@@ -173,7 +162,6 @@ async function sendMessage() {
         }
     } finally {
         isStreaming = false;
-        sendBtn.innerText = "⬤";
         controller = null;
         scrollToBottom(true);
     }
@@ -187,10 +175,6 @@ function addMessage(text, sender) {
 
     if (sender === "bot") {
         msg.innerHTML = renderMarkdown(text);
-
-        if (window.Prism) {
-            Prism.highlightAllUnder(msg);
-        }
     } else {
         msg.innerText = text;
     }
