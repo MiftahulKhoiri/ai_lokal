@@ -2,36 +2,43 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>AIRA - AI Rumah</title>
+
+    <!-- Theme Color (Mobile Address Bar) -->
+    <meta name="theme-color" content="#111827">
 
     <!-- Main CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <!-- Prism Dark Theme (ChatGPT-like code) -->
+    <!-- Prism Dark Theme -->
     <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
-
 </head>
+
 <body>
 
-<div class="app">
+<main class="app">
 
     <!-- HEADER -->
-    <div class="chat-header">
-        <button class="menu-btn">☰</button>
+    <header class="chat-header">
+        <button class="menu-btn" aria-label="Menu">☰</button>
 
         <div class="header-title">
-            AIRA <span class="model-badge">Qwen 7B</span>
+            <span class="logo">AIRA</span>
+            <span class="model-badge">Qwen 7B</span>
         </div>
+
+        <!-- Status Indicator (Future Ready) -->
+        <div class="status-indicator" id="statusIndicator" aria-live="polite"></div>
 
         <div class="header-actions">
-            <button class="icon-btn">👤+</button>
-            <button class="icon-btn">💬</button>
+            <button class="icon-btn" aria-label="Tambah Profil">👤+</button>
+            <button class="icon-btn" aria-label="Riwayat Chat">💬</button>
         </div>
-    </div>
+    </header>
 
     <!-- HERO / HOME -->
-    <div class="home" id="homeScreen">
+    <section class="home" id="homeScreen">
         <h1>Apa yang bisa saya bantu?</h1>
 
         <div class="action-grid">
@@ -40,36 +47,52 @@
             <button class="action-btn">✍️ Bantu tuliskan</button>
             <button class="action-btn">🎁 Kejutkan saya</button>
         </div>
-    </div>
+    </section>
 
     <!-- CHAT AREA -->
-    <div class="chat-container" id="chat"></div>
+    <section 
+        class="chat-container" 
+        id="chat"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+    ></section>
 
     <!-- INPUT AREA -->
-    <div class="input-container">
-        <button class="plus-btn">＋</button>
+    <footer class="input-container">
+
+        <button class="plus-btn" aria-label="Tambah File">＋</button>
 
         <textarea 
             id="message" 
-            placeholder="Tanya AIRA..." 
+            placeholder="Tanya AIRA..."
             rows="1"
             autocomplete="off"
+            spellcheck="false"
         ></textarea>
 
-        <button class="mic-btn">🎤</button>
-        <button id="sendBtn" class="send-btn">Kirim</button>
-    </div>
+        <button class="mic-btn" aria-label="Gunakan Mikrofon">🎤</button>
 
-</div>
+        <button 
+            id="sendBtn" 
+            class="send-btn"
+            aria-label="Kirim Pesan"
+        >
+            Kirim
+        </button>
+
+    </footer>
+
+</main>
 
 <!-- Prism Core -->
-<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js" defer></script>
 
 <!-- Python Support -->
-<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js" defer></script>
 
 <!-- Your App Script -->
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
 
 </body>
 </html>
