@@ -11,11 +11,23 @@
 </head>
 <body>
 
+<!-- ================= HEADER ================= -->
+
 <header class="topbar">
     <button class="icon-btn">☰</button>
-    <div class="title">Obrolan baru</div>
+
+    <div class="title">
+        Obrolan baru
+        <div class="ai-status" id="aiStatus">Idle</div>
+    </div>
+
     <button class="icon-btn">＋</button>
 </header>
+
+<!-- TOP PROGRESS BAR -->
+<div class="top-progress" id="topProgress"></div>
+
+<!-- ================= MAIN ================= -->
 
 <main class="main">
 
@@ -32,13 +44,17 @@
 
 </main>
 
+<!-- ================= INPUT ================= -->
+
 <footer class="input-area">
     <div class="input-box">
 
         <textarea 
             id="message"
             placeholder="Ketik pesan atau tahan untuk bicara"
-            rows="1"></textarea>
+            rows="1"
+            autocomplete="off"
+            spellcheck="false"></textarea>
 
         <button id="sendBtn" class="send-btn" disabled>
             ↑
