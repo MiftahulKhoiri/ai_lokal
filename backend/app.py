@@ -151,6 +151,7 @@ def health():
     except requests.RequestException:
         return jsonify({"model": False})
 
+
 @app.route("/stream", methods=["POST"])
 def stream():
     request_id = str(uuid.uuid4())
@@ -164,9 +165,6 @@ def stream():
 
     logger.info(f"[{request_id}] Incoming request")
 
-    # =========================
-    # FAST DIRECT TOOL ROUTING
-    # =========================
     lower_msg = user_message.lower()
 
     if any(k in lower_msg for k in ["jam", "hari", "tanggal"]):
@@ -179,37 +177,29 @@ def stream():
         logger.info(f"[{request_id}] Direct system tool executed")
         return Response(result, mimetype="text/plain")
 
-    # =========================
-    # NORMAL HYBRID LOOP
-    # =========================
-
     def generate():
         max_steps = 2
         step = 0
         final_reply = ""
-
         messages_local = build_messages(user_message)
 
         try:
             while step < max_steps:
 
                 payload = build_payload(messages_local)
-
                 current_reply = ""
 
-                for chunk in call_model_stream(
-                    MODEL_ENDPOINT,
-                    payload
-                ):
+                # 🔥 STREAM TOKEN LANGSUNG KE CLIENT
+                for chunk in call_model_stream(MODEL_ENDPOINT, payload):
                     current_reply += chunk
+                    yield f"data: {chunk}\n\n"
 
                 current_reply = current_reply.strip()
-
                 action_result = agent.execute_action(current_reply)
 
                 if action_result is None:
                     final_reply = current_reply
-                    yield final_reply
+                    yield "data: [DONE]\n\n"
                     break
 
                 messages_local.append({
@@ -226,11 +216,11 @@ def stream():
                 step += 1
 
             else:
-                yield "⚠ Batas reasoning tercapai."
+                yield "data: ⚠ Batas reasoning tercapai.\n\n"
 
         except requests.RequestException as e:
             logger.error(f"[{request_id}] Model error: {e}")
-            yield "⚠ Model tidak merespon."
+            yield "data: ⚠ Model tidak merespon.\n\n"
 
         finally:
             duration = round(time.time() - start_time, 2)
@@ -245,10 +235,11 @@ def stream():
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no"
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive"
         }
     )
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, threaded=True)
