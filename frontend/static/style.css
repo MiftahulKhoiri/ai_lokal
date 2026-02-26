@@ -7,6 +7,8 @@
     --subtle: #ececec;
     --user: #1e88ff;
     --code-bg: #1e1e1e;
+    --border: #e5e5e5;
+    --shadow-soft: 0 4px 20px rgba(0,0,0,0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,6 +19,8 @@
         --subtle: #2a2a2d;
         --user: #2b8cff;
         --code-bg: #111;
+        --border: #262626;
+        --shadow-soft: 0 4px 20px rgba(0,0,0,0.4);
     }
 }
 
@@ -36,7 +40,7 @@ body {
 }
 
 .app {
-    max-width: 480px;
+    max-width: 760px;
     margin: auto;
     min-height: 100vh;
     display: flex;
@@ -47,22 +51,38 @@ body {
 /* ================= HEADER ================= */
 
 .chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--subtle);
+    padding: 14px 18px;
+    backdrop-filter: blur(12px);
+    background: rgba(255,255,255,0.75);
+    border-bottom: 1px solid var(--border);
+}
+
+@media (prefers-color-scheme: dark) {
+    .chat-header {
+        background: rgba(20,20,20,0.75);
+    }
 }
 
 .menu-btn,
 .icon-btn {
     background: var(--subtle);
     border: none;
-    padding: 8px 12px;
+    padding: 8px 14px;
     border-radius: 20px;
-    font-size: 16px;
+    font-size: 15px;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.menu-btn:hover,
+.icon-btn:hover {
+    background: var(--border);
 }
 
 .header-title {
@@ -70,14 +90,14 @@ body {
     font-size: 16px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .model-badge {
-    font-size: 12px;
-    background: var(--user);
+    font-size: 11px;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
     color: white;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 14px;
 }
 
@@ -85,21 +105,34 @@ body {
 
 .chat-container {
     flex: 1;
-    padding: 24px 16px 10px 16px;
+    padding: 28px 18px 120px 18px;
     overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar modern */
+.chat-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
 }
 
 /* ================= MESSAGE ================= */
 
 .message {
-    margin-bottom: 18px;
-    padding: 14px 18px;
-    border-radius: 24px;
-    max-width: 85%;
+    margin-bottom: 22px;
+    padding: 16px 20px;
+    border-radius: 26px;
+    max-width: 80%;
     font-size: 15px;
-    line-height: 1.7;
+    line-height: 1.75;
     position: relative;
     animation: fadeIn 0.25s ease;
+    word-wrap: break-word;
+    box-shadow: var(--shadow-soft);
 }
 
 @keyframes fadeIn {
@@ -111,21 +144,20 @@ body {
     margin-left: auto;
     background: var(--user);
     color: white;
-    border-bottom-right-radius: 10px;
+    border-bottom-right-radius: 8px;
 }
 
 .bot {
     background: var(--surface);
     color: var(--text);
-    border-bottom-left-radius: 10px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border-bottom-left-radius: 8px;
 }
 
 /* ================= CODE BLOCK ================= */
 
 .bot .code-block {
     position: relative;
-    margin-top: 14px;
+    margin-top: 16px;
     border-radius: 20px;
     overflow: hidden;
     background: var(--code-bg);
@@ -157,7 +189,7 @@ body {
 }
 
 .copy-btn:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.3);
 }
 
 /* ================= TYPING ================= */
@@ -186,12 +218,21 @@ body {
 /* ================= INPUT ================= */
 
 .input-container {
+    position: sticky;
+    bottom: 0;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px;
-    background: var(--surface);
-    border-top: 1px solid var(--subtle);
+    padding: 14px 18px;
+    backdrop-filter: blur(12px);
+    background: rgba(255,255,255,0.75);
+    border-top: 1px solid var(--border);
+}
+
+@media (prefers-color-scheme: dark) {
+    .input-container {
+        background: rgba(20,20,20,0.75);
+    }
 }
 
 textarea {
@@ -200,10 +241,16 @@ textarea {
     border: none;
     background: var(--subtle);
     border-radius: 24px;
-    padding: 12px 16px;
+    padding: 14px 18px;
     outline: none;
     font-size: 15px;
     color: var(--text);
+    transition: all 0.2s ease;
+}
+
+textarea:focus {
+    background: var(--surface);
+    box-shadow: 0 0 0 2px rgba(30,136,255,0.2);
 }
 
 .send-btn {
@@ -211,13 +258,18 @@ textarea {
     height: 48px;
     border-radius: 50%;
     border: none;
-    background: #111;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
     color: white;
     font-size: 14px;
     cursor: pointer;
-    transition: transform 0.1s ease;
+    transition: transform 0.1s ease, opacity 0.2s ease;
 }
 
 .send-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
+}
+
+.send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
