@@ -13,7 +13,7 @@ LLAMA_PATH = "/home/pi5/llama.cpp/build/bin/llama-server"
 # SINGLE MODEL CONFIG (7B ONLY)
 # =============================
 
-MODEL_FILE = "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+MODEL_FILE = "qwen2.5-3b-instruct-q4_k_m.gguf"
 PORT = "8081"
 
 process = None
