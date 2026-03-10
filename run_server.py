@@ -49,7 +49,7 @@ def wait_for_llama(timeout=120):
         try:
             r = requests.get(
                 f"http://127.0.0.1:{LLAMA_PORT}/health",
-                timeout=2
+                timeout=5
             )
             if r.status_code == 200:
                 print("[INFO] llama-server siap.")
