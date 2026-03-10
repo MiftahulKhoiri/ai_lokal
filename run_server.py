@@ -124,9 +124,11 @@ def shutdown(signum, frame):
 
     if gunicorn_process:
         gunicorn_process.terminate()
+        gunicorn_process.wait()
 
     if llama_process:
         llama_process.terminate()
+        llama_process.wait()
 
     sys.exit(0)
 
