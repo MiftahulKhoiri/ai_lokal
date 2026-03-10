@@ -12,7 +12,7 @@ MODEL_DIR = os.path.join(BASE_DIR, "models")
 
 LLAMA_PATH = "/home/pi5/llama.cpp/build/bin/llama-server"
 
-MODEL_FILE = "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+MODEL_FILE = "qwen2.5-3b-instruct-q4_k_m.gguf"
 LLAMA_PORT = 8081
 FLASK_PORT = 5000
 
