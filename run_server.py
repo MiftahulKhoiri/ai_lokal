@@ -4,6 +4,7 @@ import subprocess
 import signal
 import time
 import requests
+import socket
 from tools.bootstrap import bootstrap
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
