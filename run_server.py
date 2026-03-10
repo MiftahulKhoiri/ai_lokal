@@ -147,8 +147,7 @@ if __name__ == "__main__":
     start_gunicorn()
 
     print("\n[INFO] AI Lokal Production Server Running")
-    print("Local   : http://127.0.0.1:5000")
-    print("LAN     : http://IP_RASPBERRY_PI:5000\n")
+    print(f"Network : http://{local_ip}:5000\n")
 
     while True:
         time.sleep(1)
