@@ -137,6 +137,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
+    local_ip = get_local_ip()
 
     print("[INFO] Loading memory...")
     from backend.memory import load_memory
