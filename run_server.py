@@ -73,7 +73,7 @@ def start_llama():
         "--n-gpu-layers", "0"
     ]
 
-    print("[INFO] Menjalankan model 7B...")
+    print("[INFO] Menjalankan model ...")
     llama_process = subprocess.Popen(cmd)
 
     wait_for_llama()
