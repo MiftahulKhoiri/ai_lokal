@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print("[INFO] Loading memory...")
     load_memory()
 
-    print("[INFO] Starting 7B model...")
+    print("[INFO] Starting model...")
     start_server()  # ✅ TANPA PARAMETER
 
     local_ip = get_local_ip()
