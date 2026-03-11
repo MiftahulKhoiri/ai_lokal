@@ -11,3 +11,7 @@ def get_local_ip():
         return ip
     except:
         return "127.0.0.1"
+
+def kill_port(port):
+    os.system(f"fuser -k {port}/tcp > /dev/null 2>&1")
+
