@@ -35,15 +35,17 @@ def start_model():
 
     model_path = get_model_path()
 
-    cmd = [
+        cmd = [
         LLAMA_PATH,
         "-m", model_path,
-        "--host", "0.0.0.0",
-        "--port", str(LLAMA_PORT),
-        "-c", "4096",
-        "--threads", "6",
-        "-ngl", "0"
+        "--host", "127.0.0.1",
+        "--port", PORT,
+        "--ctx-size", "2048",
+        "--threads", "8",
+        "--batch-size", "512",
+        "--n-gpu-layers", "0"
     ]
+
 
     print("[INFO] Menjalankan model...")
     print(f"[INFO] Model: {MODEL_FILE}")
