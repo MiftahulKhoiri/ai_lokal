@@ -6,7 +6,7 @@ import time
 import socket
 
 from tools.bootstrap import bootstrap
-from backend.model_runner import start_model, stop_model
+from backend.llama_manager import start_server, stop_server
 from backend.servers import (
     start_gunicorn,
     get_local_ip,
@@ -15,18 +15,6 @@ from backend.servers import (
 
 from backend.memory import load_memory
 
-
-# ===============================
-# Shutdown handler
-# ===============================
-def safe_shutdown(signum, frame):
-
-    print("\n[INFO] Shutdown server...")
-
-    stop_model()      # stop llama.cpp
-    shutdown(None, None)  # stop gunicorn
-
-    sys.exit(0)
 
 
 # ===============================
