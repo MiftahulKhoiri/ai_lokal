@@ -24,9 +24,6 @@ if __name__ == "__main__":
 
     bootstrap()
 
-    signal.signal(signal.SIGINT, safe_shutdown)
-    signal.signal(signal.SIGTERM, safe_shutdown)
-
     local_ip = get_local_ip()
 
     print("[INFO] Loading memory...")
