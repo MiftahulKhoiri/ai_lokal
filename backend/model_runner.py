@@ -35,7 +35,7 @@ def start_model():
 
     model_path = get_model_path()
 
-        cmd = [
+    cmd = [
         LLAMA_PATH,
         "-m", model_path,
         "--host", "127.0.0.1",
