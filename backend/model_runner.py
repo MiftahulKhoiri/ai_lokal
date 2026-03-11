@@ -33,19 +33,22 @@ def get_model_path():
 def start_model():
     global llama_process
 
+    if model_running():
+        print("[INFO] Model sudah berjalan")
+        return llama_process
+
     model_path = get_model_path()
 
     cmd = [
         LLAMA_PATH,
         "-m", model_path,
         "--host", "127.0.0.1",
-        "--port", PORT,
+        "--port", str(LLAMA_PORT),
         "--ctx-size", "2048",
         "--threads", "8",
         "--batch-size", "512",
         "--n-gpu-layers", "0"
     ]
-
 
     print("[INFO] Menjalankan model...")
     print(f"[INFO] Model: {MODEL_FILE}")
@@ -59,7 +62,6 @@ def start_model():
 # Stop model
 # ===============================
 def stop_model():
-
     global llama_process
 
     if llama_process:
@@ -72,7 +74,6 @@ def stop_model():
 # Cek status model
 # ===============================
 def model_running():
-
     if llama_process is None:
         return False
 
