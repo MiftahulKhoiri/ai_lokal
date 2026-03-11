@@ -8,7 +8,7 @@ import socket
 from tools.bootstrap import bootstrap
 from backend.model_runner import start_model, stop_model
 from backend.servers import (
-    start_gunicorn
+    start_gunicorn,
     get_local_ip,
     kill_port,
     shutdown
