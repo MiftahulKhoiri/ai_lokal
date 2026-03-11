@@ -6,9 +6,9 @@ import time
 import socket
 
 from tools.bootstrap import bootstrap
+from backend.llama_manager import start_llama
 from backend.servers import (
-    start_gunicorn,
-    start_llama,
+    start_gunicorn
     get_local_ip,
     kill_port,
     shutdown
