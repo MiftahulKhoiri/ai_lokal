@@ -10,7 +10,6 @@ from backend.model_runner import start_model, stop_model
 from backend.servers import (
     start_gunicorn,
     get_local_ip,
-    kill_port,
     shutdown
 )
 
@@ -18,16 +17,27 @@ from backend.memory import load_memory
 
 
 # ===============================
+# Shutdown handler
+# ===============================
+def safe_shutdown(signum, frame):
+
+    print("\n[INFO] Shutdown server...")
+
+    stop_model()      # stop llama.cpp
+    shutdown(None, None)  # stop gunicorn
+
+    sys.exit(0)
+
+
+# ===============================
 # Main
 # ===============================
 if __name__ == "__main__":
 
-    # Bootstrap system
     bootstrap()
 
-    # Signal handler
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, safe_shutdown)
+    signal.signal(signal.SIGTERM, safe_shutdown)
 
     local_ip = get_local_ip()
 
@@ -36,6 +46,7 @@ if __name__ == "__main__":
 
     print("[INFO] Starting LLM server...")
     start_model()
+
     time.sleep(5)
 
     print("[INFO] Starting API server...")
@@ -45,6 +56,5 @@ if __name__ == "__main__":
     print(f"Local   : http://127.0.0.1:5000")
     print(f"Network : http://{local_ip}:5000\n")
 
-    # Keep alive
     while True:
         time.sleep(1)
