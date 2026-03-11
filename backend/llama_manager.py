@@ -51,7 +51,7 @@ def start_server():
         print(f"Model sudah berjalan di port {PORT}.")
         return
 
-    print(f"Menjalankan 7B di port {PORT}...")
+    print(f"Menjalankan model di port {PORT}...")
 
     cmd = [
         LLAMA_PATH,
@@ -93,7 +93,7 @@ def stop_server():
         print("Model tidak sedang berjalan.")
         return
 
-    print("Menghentikan model 7B...")
+    print("Menghentikan model ...")
     process.send_signal(signal.SIGINT)
     process.wait()
     process = None
