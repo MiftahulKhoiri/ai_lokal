@@ -6,7 +6,7 @@ import time
 import socket
 
 from tools.bootstrap import bootstrap
-from backend.llama_manager import start_llama
+from backend.model_runner import start_model, stop_model
 from backend.servers import (
     start_gunicorn
     get_local_ip,
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     load_memory()
 
     print("[INFO] Starting LLM server...")
-    start_llama()
+    start_model()
     time.sleep(5)
 
     print("[INFO] Starting API server...")
