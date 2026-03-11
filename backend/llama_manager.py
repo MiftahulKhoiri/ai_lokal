@@ -10,7 +10,7 @@ MODEL_DIR = os.path.join(BASE_DIR, "models")
 LLAMA_PATH = "/home/pi5/llama.cpp/build/bin/llama-server"
 
 # =============================
-# SINGLE MODEL CONFIG (7B ONLY)
+# SINGLE MODEL CONFIG (3B ONLY)
 # =============================
 
 MODEL_FILE = "qwen2.5-3b-instruct-q4_k_m.gguf"
