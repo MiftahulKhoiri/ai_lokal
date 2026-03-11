@@ -36,6 +36,7 @@ if __name__ == "__main__":
 
     print("[INFO] Starting LLM server...")
     start_llama()
+    time.sleep(5)
 
     print("[INFO] Starting API server...")
     start_gunicorn()
