@@ -1,8 +1,6 @@
 import os
 import subprocess
 from typing import List
-import psutil
-
 
 # ==============================
 # SAFETY ROOT
@@ -298,19 +296,3 @@ def project_tree(path: str = ".", max_depth: int = 3) -> str:
     except Exception as e:
         return f"project_tree error: {e}"
 
-
-def get_system_status():
-
-    mem = psutil.virtual_memory()
-
-    total = round(mem.total / (1024**3), 2)
-    used = round(mem.used / (1024**3), 2)
-    free = round(mem.available / (1024**3), 2)
-
-    return f"""
-Status RAM Sistem
-
-Total : {total} GB
-Digunakan : {used} GB
-Tersedia : {free} GB
-"""
