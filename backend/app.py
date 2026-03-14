@@ -4,7 +4,7 @@ import time
 import uuid
 import logging
 import threading
-from typing import Dict, Generator, List, Optional
+from typing import Dict, Generator, List, Optional, Tuple
 
 import requests
 from flask import Flask, render_template, request, Response, jsonify, stream_with_context
@@ -35,20 +35,6 @@ MAX_TOKENS = AI_CONFIG.get("max_tokens", 256)
 TEMPERATURE = AI_CONFIG.get("temperature", 0.4)
 STM_LIMIT = AI_CONFIG.get("short_term_limit", 6)
 WORKSPACE_ROOT = AI_CONFIG.get("workspace_root", ".")
-TOOLS = {
-
-    "read_file": read_file,
-    "write_file": write_file,
-    "append_file": append_file,
-    "delete_file": delete_file,
-    "list_files": list_files,
-    "make_directory": make_directory,
-    "search_text": search_text,
-    "file_info": file_info,
-    "run_python": run_python,
-    "run_shell": run_shell,
-    "project_tree": project_tree
-}
 
 REQUEST_TIMEOUT = (10, 300)
 
@@ -101,8 +87,23 @@ logger = logging.getLogger("AIRA")
 # =============================
 
 TOOLS = {
+
+    # agent tools
     "get_system_status": agent.get_system_status,
     "get_current_time": agent.get_current_time,
+
+    # dev tools
+    "read_file": read_file,
+    "write_file": write_file,
+    "append_file": append_file,
+    "delete_file": delete_file,
+    "list_files": list_files,
+    "make_directory": make_directory,
+    "search_text": search_text,
+    "file_info": file_info,
+    "run_python": run_python,
+    "run_shell": run_shell,
+    "project_tree": project_tree
 }
 
 
@@ -124,27 +125,34 @@ def build_messages(user_message: str) -> List[Dict]:
     history = get_memory()
     short_term = history[-(STM_LIMIT * 2):] if history else []
 
+    tool_list = "\n".join([f"- {t}" for t in TOOLS.keys()])
+
     system_block = f"""
 {SYSTEM_PROMPT}
 
 Kamu adalah Autonomous AI Agent.
 
-Gunakan format berikut saat reasoning:
+Gunakan format berikut:
 
 Thought: pemikiran kamu
-Action: nama_tool
 
-Jika memerlukan tool tulis:
+Jika membutuhkan tool gunakan:
 
-ACTION: nama_tool
+ACTION: nama_tool argumen
 
-Jika sudah selesai jawab gunakan:
+Contoh:
 
-FINAL: jawaban untuk user
+ACTION: read_file main.py
+ACTION: write_file hello.py | print("hello")
+ACTION: run_python hello.py
 
-TOOLS:
-- get_system_status
-- get_current_time
+Jika sudah selesai gunakan:
+
+FINAL: jawaban
+
+TOOLS YANG TERSEDIA:
+
+{tool_list}
 
 User Profile:
 {json.dumps(USER_PROFILE, indent=2)}
@@ -215,17 +223,27 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
 # ACTION PARSER
 # =============================
 
-def parse_action(text: str) -> Optional[str]:
+def parse_action(text: str) -> Tuple[Optional[str], Optional[str]]:
 
     if "ACTION:" not in text:
-        return None
+        return None, None
 
     try:
-        part = text.split("ACTION:")[1]
-        tool = part.strip().split()[0]
-        return tool
-    except Exception:
-        return None
+
+        line = text.split("ACTION:")[1].strip()
+
+        parts = line.split(" ", 1)
+
+        tool = parts[0]
+        args = ""
+
+        if len(parts) > 1:
+            args = parts[1]
+
+        return tool, args
+
+    except:
+        return None, None
 
 
 def detect_final(text: str) -> Optional[str]:
@@ -240,7 +258,7 @@ def detect_final(text: str) -> Optional[str]:
 # TOOL EXECUTOR
 # =============================
 
-def run_tool(tool_name: str) -> str:
+def run_tool(tool_name: str, args: str) -> str:
 
     tool = TOOLS.get(tool_name)
 
@@ -248,7 +266,15 @@ def run_tool(tool_name: str) -> str:
         return f"Tool '{tool_name}' tidak ditemukan."
 
     try:
-        return tool()
+
+        if not args:
+            return tool()
+
+        params = args.split("|")
+        params = [p.strip() for p in params]
+
+        return tool(*params)
+
     except Exception as e:
         return f"Tool error: {e}"
 
@@ -326,14 +352,14 @@ def stream():
                     yield "data: [DONE]\n\n"
                     break
 
-                tool = parse_action(current_reply)
+                tool, args = parse_action(current_reply)
 
                 if not tool:
                     final_answer = current_reply
                     yield "data: [DONE]\n\n"
                     break
 
-                observation = run_tool(tool)
+                observation = run_tool(tool, args)
 
                 messages_local.append({
                     "role": "assistant",
