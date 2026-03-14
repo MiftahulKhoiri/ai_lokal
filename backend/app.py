@@ -12,7 +12,6 @@ from flask import Flask, render_template, request, Response, jsonify, stream_wit
 from backend.memory import get_memory, add_to_memory, load_memory
 from backend.agent import Agent
 from backend.config_loader import load_all_configs
-from backend.dev_tools import *
 
 
 # =============================
@@ -83,29 +82,6 @@ logger = logging.getLogger("AIRA")
 
 
 # =============================
-# TOOL REGISTRY
-# =============================
-
-TOOLS = {
-
-    "get_system_status": agent.get_system_status,
-    "get_current_time": agent.get_current_time,
-
-    "read_file": read_file,
-    "write_file": write_file,
-    "append_file": append_file,
-    "delete_file": delete_file,
-    "list_files": list_files,
-    "make_directory": make_directory,
-    "search_text": search_text,
-    "file_info": file_info,
-    "run_python": run_python,
-    "run_shell": run_shell,
-    "project_tree": project_tree
-}
-
-
-# =============================
 # UTILITIES
 # =============================
 
@@ -123,7 +99,7 @@ def build_messages(user_message: str) -> List[Dict]:
     history = get_memory()
     short_term = history[-(STM_LIMIT * 2):] if history else []
 
-    tool_list = "\n".join([f"- {t}" for t in TOOLS.keys()])
+    tool_list = "\n".join([f"- {t}" for t in agent.list_tools()])
 
     system_block = f"""
 {SYSTEM_PROMPT}
@@ -223,7 +199,6 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
 
 def parse_action(text: str) -> Tuple[Optional[str], Optional[str]]:
 
-    # format ACTION
     if "ACTION:" in text:
 
         try:
@@ -242,7 +217,6 @@ def parse_action(text: str) -> Tuple[Optional[str], Optional[str]]:
         except:
             pass
 
-    # format JSON
     try:
 
         data = json.loads(text)
@@ -250,7 +224,6 @@ def parse_action(text: str) -> Tuple[Optional[str], Optional[str]]:
         if "action" in data:
 
             tool = data["action"]
-
             params = data.get("params", {})
 
             if isinstance(params, dict):
@@ -280,20 +253,15 @@ def detect_final(text: str) -> Optional[str]:
 
 def run_tool(tool_name: str, args: str) -> str:
 
-    tool = TOOLS.get(tool_name)
-
-    if not tool:
-        return f"Tool '{tool_name}' tidak ditemukan."
-
     try:
 
         if not args:
-            return tool()
+            return agent.run(tool_name)
 
         params = args.split("|")
         params = [p.strip() for p in params]
 
-        return tool(*params)
+        return agent.run(tool_name, {"args": params})
 
     except Exception as e:
         return f"Tool error: {e}"
