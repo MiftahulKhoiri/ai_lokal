@@ -1,57 +1,99 @@
 import os
-import json
+import inspect
 import psutil
 from datetime import datetime
+
+# import dev tools
+import backend.dev_tools as dev_tools
 
 
 class Agent:
 
-    def __init__(self, agent_config: dict, workspace_root: str):
+    # =========================
+    # INIT
+    # =========================
+
+    def __init__(self, agent_config=None, workspace_root="."):
 
         self.agent_config = agent_config or {}
-        self.allowed_actions = self.agent_config.get("allowed_actions", {})
+
         self.workspace_root = os.path.abspath(workspace_root)
 
-        self.tools = {
-            "get_current_time": self.get_current_time,
-            "get_system_status": self.get_system_status,
-            "list_files": self.list_files,
-            "read_file": self.read_file,
-        }
+        self.tools = {}
+
+        # register internal tools
+        self._register_internal_tools()
+
+        # auto register dev tools
+        self._register_dev_tools()
 
     # =========================
-    # TOOL EXECUTION
+    # INTERNAL TOOLS
     # =========================
 
-    def run(self, tool_name: str, params: dict | None = None):
+    def _register_internal_tools(self):
 
-        if tool_name not in self.tools:
+        self.tools["get_current_time"] = self.get_current_time
+        self.tools["get_system_status"] = self.get_system_status
+
+    # =========================
+    # AUTO LOAD DEV TOOLS
+    # =========================
+
+    def _register_dev_tools(self):
+
+        for name, func in inspect.getmembers(dev_tools, inspect.isfunction):
+
+            # skip private functions
+            if name.startswith("_"):
+                continue
+
+            self.tools[name] = func
+
+    # =========================
+    # LIST TOOLS
+    # =========================
+
+    def list_tools(self):
+
+        return list(self.tools.keys())
+
+    # =========================
+    # TOOL EXECUTOR
+    # =========================
+
+    def run(self, tool_name, params=None):
+
+        tool = self.tools.get(tool_name)
+
+        if tool is None:
             return f"Tool '{tool_name}' tidak tersedia."
 
         try:
-
-            tool = self.tools[tool_name]
 
             if params:
                 return tool(**params)
 
             return tool()
 
+        except TypeError as e:
+            return f"Parameter salah: {e}"
+
         except Exception as e:
-            return f"Gagal menjalankan tool: {e}"
+            return f"Tool error: {e}"
 
     # =========================
     # SECURITY
     # =========================
 
-    def safe_path(self, relative_path: str):
+    def safe_path(self, relative_path):
 
         full_path = os.path.abspath(
             os.path.join(self.workspace_root, relative_path)
         )
 
         if not full_path.startswith(self.workspace_root):
-            raise PermissionError("Akses di luar workspace ditolak.")
+            raise PermissionError("Akses di luar workspace ditolak")
 
         return full_path
 
@@ -85,32 +127,11 @@ class Agent:
 
         cpu = psutil.cpu_percent(interval=1)
         ram = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
 
         return (
             "Status Sistem:\n"
-            f"CPU Usage: {cpu}%\n"
-            f"RAM Usage: {ram.percent}%"
+            f"CPU Usage : {cpu}%\n"
+            f"RAM Usage : {ram.percent}%\n"
+            f"Disk Usage: {disk.percent}%"
         )
-
-    # =========================
-    # FILE TOOLS
-    # =========================
-
-    def list_files(self):
-
-        items = os.listdir(self.workspace_root)
-
-        if not items:
-            return "Workspace kosong."
-
-        return "\n".join(items)
-
-    def read_file(self, filename: str):
-
-        path = self.safe_path(filename)
-
-        if not os.path.isfile(path):
-            return "File tidak ditemukan."
-
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read(8000)
