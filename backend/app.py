@@ -88,11 +88,9 @@ logger = logging.getLogger("AIRA")
 
 TOOLS = {
 
-    # agent tools
     "get_system_status": agent.get_system_status,
     "get_current_time": agent.get_current_time,
 
-    # dev tools
     "read_file": read_file,
     "write_file": write_file,
     "append_file": append_file,
@@ -225,25 +223,47 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
 
 def parse_action(text: str) -> Tuple[Optional[str], Optional[str]]:
 
-    if "ACTION:" not in text:
-        return None, None
+    # format ACTION
+    if "ACTION:" in text:
 
+        try:
+
+            line = text.split("ACTION:")[1].strip()
+            parts = line.split(" ", 1)
+
+            tool = parts[0]
+            args = ""
+
+            if len(parts) > 1:
+                args = parts[1]
+
+            return tool, args
+
+        except:
+            pass
+
+    # format JSON
     try:
 
-        line = text.split("ACTION:")[1].strip()
+        data = json.loads(text)
 
-        parts = line.split(" ", 1)
+        if "action" in data:
 
-        tool = parts[0]
-        args = ""
+            tool = data["action"]
 
-        if len(parts) > 1:
-            args = parts[1]
+            params = data.get("params", {})
 
-        return tool, args
+            if isinstance(params, dict):
+                args = "|".join(str(v) for v in params.values())
+            else:
+                args = str(params)
+
+            return tool, args
 
     except:
-        return None, None
+        pass
+
+    return None, None
 
 
 def detect_final(text: str) -> Optional[str]:
