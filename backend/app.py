@@ -12,6 +12,7 @@ from flask import Flask, render_template, request, Response, jsonify, stream_wit
 from backend.memory import get_memory, add_to_memory, load_memory
 from backend.agent import Agent
 from backend.config_loader import load_all_configs
+from backend.dev_tools import *
 
 
 # =============================
@@ -34,6 +35,20 @@ MAX_TOKENS = AI_CONFIG.get("max_tokens", 256)
 TEMPERATURE = AI_CONFIG.get("temperature", 0.4)
 STM_LIMIT = AI_CONFIG.get("short_term_limit", 6)
 WORKSPACE_ROOT = AI_CONFIG.get("workspace_root", ".")
+TOOLS = {
+
+    "read_file": read_file,
+    "write_file": write_file,
+    "append_file": append_file,
+    "delete_file": delete_file,
+    "list_files": list_files,
+    "make_directory": make_directory,
+    "search_text": search_text,
+    "file_info": file_info,
+    "run_python": run_python,
+    "run_shell": run_shell,
+    "project_tree": project_tree
+}
 
 REQUEST_TIMEOUT = (10, 300)
 
