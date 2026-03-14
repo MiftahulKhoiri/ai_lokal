@@ -1,5 +1,6 @@
 import os
 import inspect
+import json
 import psutil
 from datetime import datetime
 
@@ -44,7 +45,6 @@ class Agent:
 
         for name, func in inspect.getmembers(dev_tools, inspect.isfunction):
 
-            # skip private functions
             if name.startswith("_"):
                 continue
 
@@ -59,10 +59,45 @@ class Agent:
         return list(self.tools.keys())
 
     # =========================
-    # TOOL EXECUTOR
+    # MAIN EXECUTOR
     # =========================
 
-    def run(self, tool_name, params=None):
+    def run(self, input_data):
+
+        """
+        Bisa menerima:
+        - nama tool langsung
+        - JSON dari LLM
+        """
+
+        # jika string JSON dari LLM
+        if isinstance(input_data, str):
+
+            input_data = input_data.strip()
+
+            if input_data.startswith("{"):
+
+                try:
+                    data = json.loads(input_data)
+
+                    tool_name = data.get("action")
+                    params = data.get("params", {})
+
+                    return self.execute_tool(tool_name, params)
+
+                except Exception:
+                    return "Format JSON tool tidak valid."
+
+            # jika bukan JSON → anggap tool langsung
+            return self.execute_tool(input_data, {})
+
+        return "Input tidak dikenali."
+
+    # =========================
+    # TOOL EXECUTION
+    # =========================
+
+    def execute_tool(self, tool_name, params=None):
 
         tool = self.tools.get(tool_name)
 
@@ -118,20 +153,28 @@ class Agent:
         hari = hari_map.get(now.strftime("%A"), now.strftime("%A"))
 
         return (
-            f"Selamat {hari}. "
-            f"Hari ini tanggal {now.strftime('%d-%m-%Y')}. "
+            f"Hari ini {hari}, "
+            f"{now.strftime('%d %B %Y')}.\n"
             f"Sekarang pukul {now.strftime('%H:%M:%S')}."
         )
 
     def get_system_status(self):
 
         cpu = psutil.cpu_percent(interval=1)
+
         ram = psutil.virtual_memory()
+
         disk = psutil.disk_usage("/")
 
+        total_ram = round(ram.total / (1024**3), 2)
+        used_ram = round(ram.used / (1024**3), 2)
+        free_ram = round(ram.available / (1024**3), 2)
+
         return (
-            "Status Sistem:\n"
+            "Status Sistem\n\n"
             f"CPU Usage : {cpu}%\n"
-            f"RAM Usage : {ram.percent}%\n"
+            f"RAM Total : {total_ram} GB\n"
+            f"RAM Used  : {used_ram} GB\n"
+            f"RAM Free  : {free_ram} GB\n"
             f"Disk Usage: {disk.percent}%"
         )
