@@ -4,38 +4,25 @@ import time
 import uuid
 import logging
 import threading
-from typing import Dict, Generator, List
+from typing import Dict, Generator, List, Optional
 
 import requests
-from flask import (
-    Flask,
-    render_template,
-    request,
-    Response,
-    jsonify,
-    stream_with_context
-)
+from flask import Flask, render_template, request, Response, jsonify, stream_with_context
 
-from backend.memory import (
-    get_memory,
-    add_to_memory,
-    load_memory
-)
-
+from backend.memory import get_memory, add_to_memory, load_memory
 from backend.agent import Agent
 from backend.config_loader import load_all_configs
 
 
 # =============================
-# CONFIG LOADER
+# CONFIG
 # =============================
 
 configs = load_all_configs()
 
-SYSTEM_PROMPT = configs.get("system_prompt") or "Kamu adalah AI."
+SYSTEM_PROMPT = configs.get("system_prompt") or "Kamu adalah AI agent."
 AI_CONFIG = configs.get("ai_config", {})
 USER_PROFILE = configs.get("user_profile", {})
-REVIEW_CONFIG = configs.get("review_config", {})
 AGENT_CONFIG = configs.get("agent_config", {})
 
 MODEL_ENDPOINT = os.getenv(
@@ -43,7 +30,7 @@ MODEL_ENDPOINT = os.getenv(
     "http://127.0.0.1:8081/v1/chat/completions"
 )
 
-MAX_RESPONSE_TOKENS = AI_CONFIG.get("max_tokens", 256)
+MAX_TOKENS = AI_CONFIG.get("max_tokens", 256)
 TEMPERATURE = AI_CONFIG.get("temperature", 0.4)
 STM_LIMIT = AI_CONFIG.get("short_term_limit", 6)
 WORKSPACE_ROOT = AI_CONFIG.get("workspace_root", ".")
@@ -52,7 +39,7 @@ REQUEST_TIMEOUT = (10, 300)
 
 
 # =============================
-# APP INIT
+# APP
 # =============================
 
 app = Flask(
@@ -65,7 +52,7 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
 
 # =============================
-# LOAD MEMORY
+# MEMORY
 # =============================
 
 load_memory()
@@ -73,7 +60,7 @@ memory_lock = threading.Lock()
 
 
 # =============================
-# AGENT INIT
+# AGENT
 # =============================
 
 agent = Agent(
@@ -95,12 +82,12 @@ logger = logging.getLogger("AIRA")
 
 
 # =============================
-# TOOL KEYWORDS
+# TOOL REGISTRY
 # =============================
 
-TOOL_KEYWORDS = {
-    ("jam", "hari", "tanggal"): "time",
-    ("cpu", "ram", "status sistem"): "system"
+TOOLS = {
+    "get_system_status": agent.get_system_status,
+    "get_current_time": agent.get_current_time,
 }
 
 
@@ -112,7 +99,7 @@ def build_payload(messages: List[Dict]) -> Dict:
     return {
         "messages": messages,
         "temperature": TEMPERATURE,
-        "max_tokens": MAX_RESPONSE_TOKENS,
+        "max_tokens": MAX_TOKENS,
         "stream": True
     }
 
@@ -120,13 +107,31 @@ def build_payload(messages: List[Dict]) -> Dict:
 def build_messages(user_message: str) -> List[Dict]:
 
     history = get_memory()
-
     short_term = history[-(STM_LIMIT * 2):] if history else []
 
     system_block = f"""
 {SYSTEM_PROMPT}
 
-=== USER PROFILE ===
+Kamu adalah Autonomous AI Agent.
+
+Gunakan format berikut saat reasoning:
+
+Thought: pemikiran kamu
+Action: nama_tool
+
+Jika memerlukan tool tulis:
+
+ACTION: nama_tool
+
+Jika sudah selesai jawab gunakan:
+
+FINAL: jawaban untuk user
+
+TOOLS:
+- get_system_status
+- get_current_time
+
+User Profile:
 {json.dumps(USER_PROFILE, indent=2)}
 """
 
@@ -137,6 +142,10 @@ def build_messages(user_message: str) -> List[Dict]:
     return messages
 
 
+# =============================
+# STREAM MODEL
+# =============================
+
 def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
 
     try:
@@ -146,11 +155,11 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
             json=payload,
             stream=True,
             timeout=REQUEST_TIMEOUT
-        ) as response:
+        ) as r:
 
-            response.raise_for_status()
+            r.raise_for_status()
 
-            for line in response.iter_lines():
+            for line in r.iter_lines():
 
                 if not line:
                     continue
@@ -182,26 +191,51 @@ def call_model_stream(url: str, payload: Dict) -> Generator[str, None, None]:
                 except json.JSONDecodeError:
                     continue
 
-    except requests.RequestException as e:
-        logger.error(f"Model connection error: {e}")
+    except Exception as e:
+        logger.error(f"Model error: {e}")
         yield "\n⚠ Model tidak merespon.\n"
 
 
-def detect_direct_tool(user_message: str):
+# =============================
+# ACTION PARSER
+# =============================
 
-    msg = user_message.lower()
+def parse_action(text: str) -> Optional[str]:
 
-    for keys, tool in TOOL_KEYWORDS.items():
+    if "ACTION:" not in text:
+        return None
 
-        if any(k in msg for k in keys):
+    try:
+        part = text.split("ACTION:")[1]
+        tool = part.strip().split()[0]
+        return tool
+    except Exception:
+        return None
 
-            if tool == "time":
-                return agent.get_current_time()
 
-            if tool == "system":
-                return agent.get_system_status()
+def detect_final(text: str) -> Optional[str]:
 
-    return None
+    if "FINAL:" not in text:
+        return None
+
+    return text.split("FINAL:")[1].strip()
+
+
+# =============================
+# TOOL EXECUTOR
+# =============================
+
+def run_tool(tool_name: str) -> str:
+
+    tool = TOOLS.get(tool_name)
+
+    if not tool:
+        return f"Tool '{tool_name}' tidak ditemukan."
+
+    try:
+        return tool()
+    except Exception as e:
+        return f"Tool error: {e}"
 
 
 # =============================
@@ -218,24 +252,17 @@ def health():
 
     try:
 
-        base_url = MODEL_ENDPOINT.split("/v1/")[0]
-        health_url = base_url + "/health"
+        base = MODEL_ENDPOINT.split("/v1/")[0]
+        r = requests.get(base + "/health", timeout=2)
 
-        r = requests.get(health_url, timeout=2)
-
-        return jsonify({
-            "model": r.status_code == 200
-        })
+        return jsonify({"model": r.status_code == 200})
 
     except requests.RequestException:
-
-        return jsonify({
-            "model": False
-        })
+        return jsonify({"model": False})
 
 
 # =============================
-# STREAM ROUTE
+# STREAM
 # =============================
 
 @app.route("/stream", methods=["POST"])
@@ -252,27 +279,13 @@ def stream():
 
     logger.info(f"[{request_id}] User: {user_message}")
 
-    # =============================
-    # DIRECT TOOL EXECUTION
-    # =============================
-
-    direct_tool = detect_direct_tool(user_message)
-
-    if direct_tool:
-        logger.info(f"[{request_id}] Direct tool executed")
-        return Response(direct_tool, mimetype="text/plain")
-
-    # =============================
-    # STREAM GENERATOR
-    # =============================
-
     def generate():
 
-        max_steps = 2
-        step = 0
-        final_reply = ""
-
         messages_local = build_messages(user_message)
+
+        max_steps = 6
+        step = 0
+        final_answer = ""
 
         try:
 
@@ -283,23 +296,29 @@ def stream():
                 current_reply = ""
 
                 for chunk in call_model_stream(MODEL_ENDPOINT, payload):
-
                     current_reply += chunk
                     yield f"data: {chunk}\n\n"
 
                 current_reply = current_reply.strip()
 
                 if not current_reply:
-                    yield "data: ⚠ Model tidak menghasilkan respon.\n\n"
                     break
 
-                action_result = agent.execute_action(current_reply)
+                final = detect_final(current_reply)
 
-                if action_result is None:
-
-                    final_reply = current_reply
+                if final:
+                    final_answer = final
                     yield "data: [DONE]\n\n"
                     break
+
+                tool = parse_action(current_reply)
+
+                if not tool:
+                    final_answer = current_reply
+                    yield "data: [DONE]\n\n"
+                    break
+
+                observation = run_tool(tool)
 
                 messages_local.append({
                     "role": "assistant",
@@ -308,32 +327,30 @@ def stream():
 
                 messages_local.append({
                     "role": "system",
-                    "content": f"Tool Result:\n{action_result}"
+                    "content": f"OBSERVATION:\n{observation}"
                 })
 
-                logger.info(f"[{request_id}] Tool executed step {step+1}")
+                logger.info(f"[{request_id}] Tool executed: {tool}")
 
                 step += 1
 
             else:
-
-                yield "data: ⚠ Batas reasoning tercapai.\n\n"
+                yield "data: ⚠ Batas reasoning tercapai\n\n"
 
         except Exception as e:
 
             logger.error(f"[{request_id}] Error: {e}")
-            yield "data: ⚠ Terjadi kesalahan server.\n\n"
+            yield "data: ⚠ Server error\n\n"
 
         finally:
 
             duration = round(time.time() - start_time, 2)
 
-            if final_reply:
-
+            if final_answer:
                 with memory_lock:
-                    add_to_memory(user_message, final_reply)
+                    add_to_memory(user_message, final_answer)
 
-            logger.info(f"[{request_id}] Done in {duration}s")
+            logger.info(f"[{request_id}] Done {duration}s")
 
     return Response(
         stream_with_context(generate()),
@@ -347,7 +364,7 @@ def stream():
 
 
 # =============================
-# RUN SERVER
+# RUN
 # =============================
 
 if __name__ == "__main__":
