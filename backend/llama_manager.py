@@ -4,13 +4,17 @@ import time
 import os
 import signal
 
+# =============================
+# PATH CONFIG
+# =============================
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR = os.path.join(BASE_DIR, "models")
 
 LLAMA_PATH = "/home/pi5/llama.cpp/build/bin/llama-server"
 
 # =============================
-# SINGLE MODEL CONFIG (3B ONLY)
+# MODEL CONFIG
 # =============================
 
 MODEL_FILE = "qwen2.5-3b-instruct-q4_k_m.gguf"
@@ -36,7 +40,7 @@ def is_running():
 
 
 # =============================
-# SERVER CONTROL
+# START SERVER
 # =============================
 
 def start_server():
@@ -47,11 +51,12 @@ def start_server():
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model tidak ditemukan: {model_path}")
 
+    # Jika server sudah running
     if is_running():
-        print(f"Model sudah berjalan di port {PORT}.")
+        print(f"[INFO] Model sudah berjalan di port {PORT}")
         return
 
-    print(f"Menjalankan model di port {PORT}...")
+    print(f"[INFO] Menjalankan model di port {PORT}...")
 
     cmd = [
         LLAMA_PATH,
@@ -64,40 +69,90 @@ def start_server():
         "--n-gpu-layers", "0"
     ]
 
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=os.setsid
+        )
+    except Exception as e:
+        raise RuntimeError(f"Gagal menjalankan llama-server: {e}")
 
     wait_until_ready()
 
 
+# =============================
+# WAIT UNTIL MODEL READY
+# =============================
+
 def wait_until_ready(timeout=120):
-    print("Menunggu model load...")
+
+    print("[INFO] Menunggu model load...")
+
     start_time = time.time()
 
     while time.time() - start_time < timeout:
+
         if is_running():
-            print("Model siap digunakan.")
+            print("[INFO] Model siap digunakan")
             return
+
         time.sleep(1)
 
-    raise RuntimeError("Model gagal start.")
+    raise RuntimeError("Model gagal start dalam waktu yang ditentukan")
 
+
+# =============================
+# STOP SERVER (SAFE SHUTDOWN)
+# =============================
 
 def stop_server():
     global process
 
     if process is None:
-        print("Model tidak sedang berjalan.")
+        print("[INFO] Model tidak sedang berjalan")
         return
 
-    print("Menghentikan model ...")
-    process.send_signal(signal.SIGINT)
-    process.wait()
+    # Jika proses sudah mati
+    if process.poll() is not None:
+        process = None
+        print("[INFO] Model sudah berhenti")
+        return
+
+    print("[INFO] Menghentikan model...")
+
+    try:
+
+        # Graceful shutdown
+        os.killpg(os.getpgid(process.pid), signal.SIGINT)
+
+        try:
+            process.wait(timeout=10)
+
+        except subprocess.TimeoutExpired:
+
+            print("[WARN] SIGINT gagal, mencoba SIGTERM")
+
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+
+            try:
+                process.wait(timeout=5)
+
+            except subprocess.TimeoutExpired:
+
+                print("[WARN] SIGTERM gagal, memaksa SIGKILL")
+
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+
+                process.wait()
+
+    except Exception as e:
+        print("[ERROR] Gagal menghentikan model:", e)
+
     process = None
-    print("Model berhenti.")
+
+    print("[INFO] Model berhasil dihentikan")
 
 
 # =============================
@@ -105,7 +160,14 @@ def stop_server():
 # =============================
 
 if __name__ == "__main__":
+
     try:
+
         start_server()
+
+        while True:
+            time.sleep(1)
+
     except KeyboardInterrupt:
+
         stop_server()
