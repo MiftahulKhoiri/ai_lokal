@@ -59,12 +59,18 @@ DEFAULT_REVIEW_CONFIG = {
 
 DEFAULT_AGENT_CONFIG = {
     "allowed_actions": {
-        "get_time": {"confirm": False},
+        "get_current_time": {"confirm": False},
         "get_system_status": {"confirm": False},
-        "shutdown": {"confirm": True},
         "list_files": {"confirm": False},
         "read_file": {"confirm": False},
-        "analyze_file": {"confirm": False}
+        "write_file": {"confirm": False},
+        "search_text": {"confirm": False},
+        "run_python": {"confirm": False},
+
+        # Quran tools
+        "quran_ayah": {"confirm": False},
+        "quran_surah": {"confirm": False},
+        "quran_search": {"confirm": False}
     }
 }
 
@@ -95,6 +101,7 @@ def _ensure_json_file(path: str, default_data: dict):
 # =============================
 
 def build_tool_instruction(agent_config: dict) -> str:
+
     tools = agent_config.get("allowed_actions", {})
 
     tool_lines = ""
@@ -107,16 +114,38 @@ def build_tool_instruction(agent_config: dict) -> str:
 === AVAILABLE TOOLS ===
 {tool_lines}
 
-Aturan penggunaan tool:
-- Jika pertanyaan membutuhkan data sistem nyata (waktu, CPU, RAM, file),
-  WAJIB menggunakan tool.
-- Jangan menjawab berdasarkan asumsi.
-- Jika menggunakan tool, balas HANYA dalam format JSON:
-  {{
-    "action": "nama_action",
-    "params": {{}}
-  }}
-- Setelah menerima hasil tool, berikan jawaban final ke user.
+=== ATURAN PENTING ===
+
+1. Jika pertanyaan membutuhkan data sistem nyata:
+   (file, CPU, RAM, dll)
+   WAJIB menggunakan tool.
+
+2. Jika pertanyaan tentang Al-Quran:
+   - nama surah
+   - ayat tertentu
+   - ayat kursi
+   - ayat tentang sesuatu
+
+   WAJIB menggunakan tool quran.
+
+   DILARANG:
+   - Menulis ayat dari pengetahuan sendiri
+   - Mengarang ayat
+
+   Contoh:
+   ACTION: quran_ayah 2|255
+   ACTION: quran_surah al fatihah|1
+   ACTION: quran_search sabar
+
+3. Format penggunaan tool:
+
+   ACTION: nama_tool arg1|arg2
+
+4. Jangan gunakan markdown seperti ** atau ##
+
+5. Setelah mendapatkan hasil tool:
+   Berikan jawaban final ke user tanpa menampilkan ACTION.
+
 """
 
 # =============================
