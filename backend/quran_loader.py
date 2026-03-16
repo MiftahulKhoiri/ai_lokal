@@ -1,5 +1,6 @@
 import os
 import json
+import re
 
 QURAN_DIR = "knowledge/quran"
 
@@ -34,3 +35,57 @@ def load_quran():
                         })
 
     print(f"[INFO] Quran loaded: {len(QURAN)} ayat")
+
+
+
+def get_ayah(surah, ayah):
+
+    for a in QURAN:
+
+        if a["surah"] == surah and a["ayah"] == ayah:
+
+            return f"QS {surah}:{ayah} ({a['surah_name']})\n{a['text']}"
+
+    return "Ayat tidak ditemukan"
+
+
+def search_keyword(keyword):
+
+    keyword = keyword.lower()
+
+    results = []
+
+    for ayat in QURAN:
+
+        if keyword in ayat["text"].lower():
+
+            results.append(
+                f"QS {ayat['surah']}:{ayat['ayah']} ({ayat['surah_name']})\n{ayat['text']}"
+            )
+
+    return "\n\n".join(results[:5])
+
+
+def smart_quran_query(query):
+
+    query = query.lower()
+
+    # contoh: al baqarah 255
+    match = re.search(r"([a-z ]+)\s*(\d+)", query)
+
+    if match:
+
+        surah_name = match.group(1).strip()
+        ayah = int(match.group(2))
+
+        if surah_name in SURAH_INDEX:
+
+            return get_ayah(SURAH_INDEX[surah_name], ayah)
+
+    # contoh: ayat kursi
+    if "kursi" in query:
+
+        return get_ayah(2, 255)
+
+    # keyword search
+    return search_keyword(query)
