@@ -1,6 +1,53 @@
 import os
 import subprocess
 from .security import safe_path
+import psutil
+from datetime import datetime
+
+
+def get_current_time():
+
+    now = datetime.now()
+
+    hari_map = {
+        "Monday": "Senin",
+        "Tuesday": "Selasa",
+        "Wednesday": "Rabu",
+        "Thursday": "Kamis",
+        "Friday": "Jumat",
+        "Saturday": "Sabtu",
+        "Sunday": "Minggu",
+    }
+
+    hari = hari_map.get(now.strftime("%A"), now.strftime("%A"))
+
+    return (
+        f"Hari ini {hari}, "
+        f"{now.strftime('%d %B %Y')}.\n"
+        f"Sekarang pukul {now.strftime('%H:%M:%S')}."
+    )
+
+
+def get_system_status():
+
+    cpu = psutil.cpu_percent(interval=1)
+
+    ram = psutil.virtual_memory()
+
+    disk = psutil.disk_usage("/")
+
+    total_ram = round(ram.total / (1024**3), 2)
+    used_ram = round(ram.used / (1024**3), 2)
+    free_ram = round(ram.available / (1024**3), 2)
+
+    return (
+        "Status Sistem\n\n"
+        f"CPU Usage : {cpu}%\n"
+        f"RAM Total : {total_ram} GB\n"
+        f"RAM Used  : {used_ram} GB\n"
+        f"RAM Free  : {free_ram} GB\n"
+        f"Disk Usage: {disk.percent}%"
+    )
 
 
 def file_info(path: str) -> str:
