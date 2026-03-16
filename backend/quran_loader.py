@@ -7,6 +7,7 @@ QURAN_DIR = "knowledge/quran"
 QURAN = []
 SURAH_INDEX = {}
 
+
 def load_quran():
 
     global QURAN, SURAH_INDEX
@@ -23,7 +24,12 @@ def load_quran():
 
                 for surah_id, surah in data.items():
 
-                    SURAH_INDEX[surah["name_latin"].lower()] = int(surah_id)
+                    name = surah["name_latin"].lower()
+
+                    SURAH_INDEX[name] = int(surah_id)
+
+                    # index tanpa spasi
+                    SURAH_INDEX[name.replace(" ", "")] = int(surah_id)
 
                     for ayah_id, text in surah["text"].items():
 
@@ -37,6 +43,9 @@ def load_quran():
     print(f"[INFO] Quran loaded: {len(QURAN)} ayat")
 
 
+# =============================
+# GET AYAT
+# =============================
 
 def get_ayah(surah, ayah):
 
@@ -48,6 +57,10 @@ def get_ayah(surah, ayah):
 
     return "Ayat tidak ditemukan"
 
+
+# =============================
+# SEARCH KEYWORD
+# =============================
 
 def search_keyword(keyword):
 
@@ -66,26 +79,47 @@ def search_keyword(keyword):
     return "\n\n".join(results[:5])
 
 
+# =============================
+# SMART QUERY
+# =============================
+
 def smart_quran_query(query):
 
     query = query.lower()
 
     # contoh: al baqarah 255
-    match = re.search(r"([a-z ]+)\s*(\d+)", query)
+    match = re.search(r"([a-z\s\-]+)\s*(\d+)", query)
 
     if match:
 
-        surah_name = match.group(1).strip()
+        surah_name = match.group(1).strip().replace("-", " ")
         ayat = int(match.group(2))
 
         if surah_name in SURAH_INDEX:
 
-            return get_ayat(SURAH_INDEX[surah_name], ayat)
+            return get_ayah(SURAH_INDEX[surah_name], ayat)
+
+    # contoh: 2:255
+    match = re.search(r"(\d+):(\d+)", query)
+
+    if match:
+
+        surah = int(match.group(1))
+        ayat = int(match.group(2))
+
+        return get_ayah(surah, ayat)
 
     # contoh: ayat kursi
     if "kursi" in query:
 
-        return get_ayat(2, 255)
+        return get_ayah(2, 255)
 
     # keyword search
     return search_keyword(query)
+
+
+# =============================
+# LOAD DATA
+# =============================
+
+# load_quran()
