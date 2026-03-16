@@ -1,7 +1,6 @@
 import os
 import subprocess
 from typing import List
-import re
 
 # ==============================
 # SAFETY ROOT
