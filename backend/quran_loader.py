@@ -76,16 +76,16 @@ def smart_quran_query(query):
     if match:
 
         surah_name = match.group(1).strip()
-        ayah = int(match.group(2))
+        ayat = int(match.group(2))
 
         if surah_name in SURAH_INDEX:
 
-            return get_ayah(SURAH_INDEX[surah_name], ayah)
+            return get_ayat(SURAH_INDEX[surah_name], ayat)
 
     # contoh: ayat kursi
     if "kursi" in query:
 
-        return get_ayah(2, 255)
+        return get_ayat(2, 255)
 
     # keyword search
     return search_keyword(query)
