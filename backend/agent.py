@@ -1,11 +1,8 @@
 import os
 import inspect
+import importlib
+import pkgutil
 import json
-import psutil
-from datetime import datetime
-
-# import dev tools
-import backend.dev_tools as dev_tools
 
 
 class Agent:
@@ -22,33 +19,44 @@ class Agent:
 
         self.tools = {}
 
-        # register internal tools
-        self._register_internal_tools()
-
-        # auto register dev tools
-        self._register_dev_tools()
+        # auto load tools
+        self._load_tools()
 
     # =========================
-    # INTERNAL TOOLS
+    # AUTO TOOL LOADER
     # =========================
 
-    def _register_internal_tools(self):
+    def _load_tools(self):
 
-        self.tools["get_current_time"] = self.get_current_time
-        self.tools["get_system_status"] = self.get_system_status
+        """
+        Load semua tool dari folder backend/tools
+        """
 
-    # =========================
-    # AUTO LOAD DEV TOOLS
-    # =========================
+        try:
 
-    def _register_dev_tools(self):
+            import backend.tools as tools_package
 
-        for name, func in inspect.getmembers(dev_tools, inspect.isfunction):
+            for loader, module_name, is_pkg in pkgutil.iter_modules(
+                tools_package.__path__
+            ):
 
-            if name.startswith("_"):
-                continue
+                module = importlib.import_module(
+                    f"backend.tools.{module_name}"
+                )
 
-            self.tools[name] = func
+                for name, func in inspect.getmembers(
+                    module,
+                    inspect.isfunction
+                ):
+
+                    if name.startswith("_"):
+                        continue
+
+                    self.tools[name] = func
+
+        except Exception as e:
+
+            print(f"[Agent] Tool loader error: {e}")
 
     # =========================
     # LIST TOOLS
@@ -62,42 +70,11 @@ class Agent:
     # MAIN EXECUTOR
     # =========================
 
-    def run(self, input_data):
+    def run(self, tool_name, params=None):
 
         """
-        Bisa menerima:
-        - nama tool langsung
-        - JSON dari LLM
+        Menjalankan tool
         """
-
-        # jika string JSON dari LLM
-        if isinstance(input_data, str):
-
-            input_data = input_data.strip()
-
-            if input_data.startswith("{"):
-
-                try:
-                    data = json.loads(input_data)
-
-                    tool_name = data.get("action")
-                    params = data.get("params", {})
-
-                    return self.execute_tool(tool_name, params)
-
-                except Exception:
-                    return "Format JSON tool tidak valid."
-
-            # jika bukan JSON → anggap tool langsung
-            return self.execute_tool(input_data, {})
-
-        return "Input tidak dikenali."
-
-    # =========================
-    # TOOL EXECUTION
-    # =========================
-
-    def execute_tool(self, tool_name, params=None):
 
         tool = self.tools.get(tool_name)
 
@@ -123,58 +100,17 @@ class Agent:
 
     def safe_path(self, relative_path):
 
+        """
+        Membatasi akses hanya di dalam workspace
+        """
+
         full_path = os.path.abspath(
             os.path.join(self.workspace_root, relative_path)
         )
 
         if not full_path.startswith(self.workspace_root):
-            raise PermissionError("Akses di luar workspace ditolak")
+            raise PermissionError(
+                "Akses di luar workspace ditolak"
+            )
 
         return full_path
-
-    # =========================
-    # SYSTEM TOOLS
-    # =========================
-
-    def get_current_time(self):
-
-        now = datetime.now()
-
-        hari_map = {
-            "Monday": "Senin",
-            "Tuesday": "Selasa",
-            "Wednesday": "Rabu",
-            "Thursday": "Kamis",
-            "Friday": "Jumat",
-            "Saturday": "Sabtu",
-            "Sunday": "Minggu",
-        }
-
-        hari = hari_map.get(now.strftime("%A"), now.strftime("%A"))
-
-        return (
-            f"Hari ini {hari}, "
-            f"{now.strftime('%d %B %Y')}.\n"
-            f"Sekarang pukul {now.strftime('%H:%M:%S')}."
-        )
-
-    def get_system_status(self):
-
-        cpu = psutil.cpu_percent(interval=1)
-
-        ram = psutil.virtual_memory()
-
-        disk = psutil.disk_usage("/")
-
-        total_ram = round(ram.total / (1024**3), 2)
-        used_ram = round(ram.used / (1024**3), 2)
-        free_ram = round(ram.available / (1024**3), 2)
-
-        return (
-            "Status Sistem\n\n"
-            f"CPU Usage : {cpu}%\n"
-            f"RAM Total : {total_ram} GB\n"
-            f"RAM Used  : {used_ram} GB\n"
-            f"RAM Free  : {free_ram} GB\n"
-            f"Disk Usage: {disk.percent}%"
-        )
