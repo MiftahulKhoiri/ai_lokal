@@ -53,7 +53,7 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
 # ===========================
 # load quran knowledge
-#===========/================
+#============================
 load_quran()
 
 # =============================
