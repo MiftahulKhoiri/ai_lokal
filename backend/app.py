@@ -9,7 +9,7 @@ from typing import Dict, Generator, List, Optional, Tuple
 import requests
 from flask import Flask, render_template, request, Response, jsonify, stream_with_context
 
-from backend.quran_load import load_quran
+from backend.quran_loader import load_quran
 from backend.memory import get_memory, add_to_memory, load_memory
 from backend.agent import Agent
 from backend.config_loader import load_all_configs
