@@ -119,7 +119,8 @@ def smart_quran_query(query):
 
 
 # =============================
-# LOAD DATA
+# LOAD DATA (only if run directly)
 # =============================
 
-# load_quran()
+if __name__ == "__main__":
+    load_quran()
