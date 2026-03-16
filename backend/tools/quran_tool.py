@@ -1,5 +1,5 @@
 import re
-from backend.quran import get_ayah, search_keyword, SURAH_INDEX
+from backend.quran_loader import get_ayah, search_keyword, SURAH_INDEX
 
 
 def quran_ayah(params=None):
